@@ -2,9 +2,6 @@ language: go
 
 sudo: false
 
-env:
-  - GO111MODULE=on
-
 go:
   - "1.11.13"
   - "1.12"
@@ -12,9 +9,16 @@ go:
   - "1.14"
 
 before_install:
-  - cd ./tests
-  - go mod tidy
-  - go get github.com/mattn/goveralls
+#  - go get github.com/mattn/goveralls
+
+before_script:
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS sqlx_adapter_test;'
+  - psql -c 'CREATE DATABASE sqlx_adapter_test;' -U postgres
 
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+  - cd ./tests
+  - go test -v .
+
+services:
+  - mysql
+  - postgresql

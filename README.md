@@ -1,9 +1,10 @@
-# sqlx-adapter [![Build Status](https://travis-ci.org/Blank-Xu/sqlx-adapter.svg?branch=tests)](https://travis-ci.org/Blank-Xu/sqlx-adapter) [![Coverage Status](https://coveralls.io/repos/github/Blank-Xu/sqlx-adapter/badge.svg?branch=tests)](https://coveralls.io/github/Blank-Xu/sqlx-adapter?branch=tests)
+# sqlx-adapter
 
 Sqlx Adapter is a [Sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
 With this library, Casbin can load policy lines from Sqlx supported databases or save policy lines.
 
 ## Database Support
+
 ### tested database
 - Mysql && MariaDB: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
 - Postgres: [github.com/lib/pq](https://github.com/lib/pq)
@@ -13,9 +14,11 @@ With this library, Casbin can load policy lines from Sqlx supported databases or
 ## no tested
 - Oracle: [github.com/mattn/go-oci8](https://github.com/mattn/go-oci8) (experiment)
 
+
 ## Installation
 
     go get github.com/Blank-Xu/sqlx-adapter
+
 
 ## Simple Examples
 ### Sqlite3
