@@ -40,14 +40,13 @@ type Adapter struct {
 	db        *sqlx.DB
 	tableName string
 
-	sqlCreateTable   string
-	sqlIsTableExist  string
-	sqlTruncateTable string
-	sqlInsertRow     string
-	sqlDeleteAll     string
-	sqlDeleteRow     string
-	sqlDeleteByArgs  string
-	sqlSelectAll     string
+	sqlCreateTable  string
+	sqlIsTableExist string
+	sqlInsertRow    string
+	sqlDeleteAll    string
+	sqlDeleteRow    string
+	sqlDeleteByArgs string
+	sqlSelectAll    string
 }
 
 func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
@@ -82,29 +81,29 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 }
 
 func (p *Adapter) genSql() {
-	switch p.db.DriverName() {
-	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgresql, p.tableName)
-	case "mysql":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName)
-	case "sqlite3":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName)
-	case "oci8", "ora", "goracle":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableOracle, p.tableName)
-	case "sqlserver":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName)
-	default:
-		p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName)
-	}
-
+	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
-	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlInsertRow = fmt.Sprintf(sqlInsertRow, p.tableName)
 	p.sqlDeleteAll = fmt.Sprintf(sqlDeleteAll, p.tableName)
 	p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRow, p.tableName)
 	p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgs, p.tableName)
 
 	p.sqlSelectAll = fmt.Sprintf(sqlSelectAll, p.tableName)
+
+	switch p.db.DriverName() {
+	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgresql, p.tableName, p.tableName)
+	case "mysql":
+		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName)
+	case "sqlite3":
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName)
+	case "oci8", "ora", "goracle":
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableOracle, p.tableName, p.tableName)
+	case "sqlserver":
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName)
+	default:
+		p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName)
+	}
 }
 
 func (p *Adapter) createTable() error {
@@ -115,11 +114,6 @@ func (p *Adapter) createTable() error {
 func (p *Adapter) isTableExist() bool {
 	_, err := p.db.Exec(p.sqlIsTableExist)
 	return err == nil
-}
-
-func (p *Adapter) truncateTable() error {
-	_, err := p.db.Exec(p.sqlTruncateTable)
-	return err
 }
 
 func (p *Adapter) insertRow(line *CasbinRule) error {
@@ -173,21 +167,21 @@ func (p *Adapter) deleteByArgs(line *CasbinRule) error {
 	return err
 }
 
-func (p *Adapter) truncateAndInsetRows(lines []*CasbinRule) error {
+func (p *Adapter) deleteAndInsetRows(lines []*CasbinRule) error {
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	if _, err = tx.Exec(p.sqlTruncateTable); err != nil {
+	if _, err = tx.Exec(p.sqlDeleteAll); err != nil {
 		if err1 := tx.Rollback(); err1 != nil {
-			err = fmt.Errorf("truncate err: %v, rollback err: %v", err, err1)
+			err = fmt.Errorf("delete err: %v, rollback err: %v", err, err1)
 		}
 		return err
 	}
 
 	for _, line := range lines {
-		if _, err = tx.Exec(p.sqlInsertRow, line); err != nil {
+		if _, err = tx.Exec(p.sqlInsertRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5); err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
 				err = fmt.Errorf("insert err: %v, rollback err: %v", err, err1)
 			}
@@ -231,11 +225,10 @@ func (p *Adapter) SavePolicy(model model.Model) error {
 		for _, rule := range ast.Policy {
 			line := savePolicyLine(ptype, rule)
 			lines = append(lines, line)
-
 		}
 	}
 
-	return p.truncateAndInsetRows(lines)
+	return p.deleteAndInsetRows(lines)
 }
 
 func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {

@@ -25,23 +25,22 @@ CREATE TABLE %s
     v2     varchar(255),
     v3     varchar(255),
     v4     varchar(255),
-    v5     varchar(255),
-    INDEX idx_casbin_rule_ptype (p_type, v0, v1)
+    v5     varchar(255)
 );
+CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
-	sqlIsTableExist  = "SELECT 1 FROM `%s`;"
-	sqlTruncateTable = "TRUNCATE TABLE `%s`;"
-	sqlInsertRow     = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (:p_type, :v0, :v1, :v2, :v3, :v4, :v5);"
-	sqlDeleteAll     = "DELETE FROM `%s`;"
-	sqlDeleteRow     = "DELETE FROM `%s` WHERE `p_type` = :p_type AND `v0` = :v0 AND `v1` = :v1 AND `v2` = :v2 AND `v3` = :v3 AND `v4` = :v4 AND `v5` = :v5;"
-	sqlDeleteByArgs  = "DELETE FROM `%s` WHERE `p_type` = :p_type"
-	sqlSelectAll     = "SELECT * FROM `%s`;"
+	sqlIsTableExist = "SELECT 1 FROM `%s`;"
+	sqlInsertRow    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (?, ?, ?, ?, ?, ?, ?);"
+	sqlDeleteAll    = "DELETE FROM `%s`;"
+	sqlDeleteRow    = "DELETE FROM `%s` WHERE `p_type` = :p_type AND `v0` = :v0 AND `v1` = :v1 AND `v2` = :v2 AND `v3` = :v3 AND `v4` = :v4 AND `v5` = :v5;"
+	sqlDeleteByArgs = "DELETE FROM `%s` WHERE `p_type` = :p_type"
+	sqlSelectAll    = "SELECT * FROM `%s`;"
 )
 
 // for Sqlite3
 const (
 	sqlCreateTableSqlite3 = `
-CREATE TABLE %s
+CREATE TABLE IF NOT EXISTS %s
 (
     p_type varchar(32),
     v0     varchar(255),
@@ -49,9 +48,9 @@ CREATE TABLE %s
     v2     varchar(255),
     v3     varchar(255),
     v4     varchar(255),
-    v5     varchar(255),
-    INDEX idx_casbin_rule_ptype (p_type, v0, v1)
+    v5     varchar(255)
 );
+CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
 )
 
@@ -84,9 +83,9 @@ CREATE TABLE %s
     v2     varchar(255) NOT NULL DEFAULT '',
     v3     varchar(255) NOT NULL DEFAULT '',
     v4     varchar(255) NOT NULL DEFAULT '',
-    v5     varchar(255) NOT NULL DEFAULT '',
-    INDEX idx_casbin_rule_ptype (p_type, v0, v1)
+    v5     varchar(255) NOT NULL DEFAULT ''
 );
+CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
 )
 
@@ -101,9 +100,9 @@ CREATE TABLE %s
     v2     nvarchar(255) NOT NULL DEFAULT '',
     v3     nvarchar(255) NOT NULL DEFAULT '',
     v4     nvarchar(255) NOT NULL DEFAULT '',
-    v5     nvarchar(255) NOT NULL DEFAULT '',
-    INDEX idx_casbin_rule_ptype (p_type, v0, v1)
+    v5     nvarchar(255) NOT NULL DEFAULT ''
 );
+CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
 )
 
@@ -118,8 +117,8 @@ CREATE TABLE %s
     v2     NVARCHAR2(255),
     v3     NVARCHAR2(255),
     v4     NVARCHAR2(255),
-    v5     NVARCHAR2(255),
-    INDEX idx_casbin_rule_ptype (p_type, v0, v1)
+    v5     NVARCHAR2(255)
 );
+CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
 )
