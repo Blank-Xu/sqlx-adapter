@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
@@ -93,16 +94,23 @@ func (p *Adapter) genSql() {
 	switch p.db.DriverName() {
 	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgresql, p.tableName, p.tableName)
+		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgresql, p.tableName)
+		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowPostgresql, p.tableName)
+		p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgsPostgresql, p.tableName)
 	case "mysql":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName)
 	case "sqlite3":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName)
 	case "oci8", "ora", "goracle":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableOracle, p.tableName, p.tableName)
+		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowOracle, p.tableName)
+		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowOracle, p.tableName)
+		p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgsOracle, p.tableName)
 	case "sqlserver":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName)
-	default:
-		p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName)
+		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
+		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowSqlserver, p.tableName)
+		p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgsSqlserver, p.tableName)
 	}
 }
 
@@ -132,34 +140,45 @@ func (p *Adapter) deleteRow(line *CasbinRule) error {
 }
 
 func (p *Adapter) deleteByArgs(line *CasbinRule) error {
-	args := make([]interface{}, 0, 4)
-	args = append(args, line.PType)
+	if line == nil {
+		return errors.New("data is nil")
+	}
 
 	sqlBuf := bytes.NewBufferString(p.sqlDeleteByArgs)
 
-	if line.V0 != "" {
-		sqlBuf.WriteString(" AND `v0` = ?")
-		args = append(args, line.V0)
-	}
-	if line.V1 != "" {
-		sqlBuf.WriteString(" AND `v1` = ?")
-		args = append(args, line.V1)
-	}
-	if line.V2 != "" {
-		sqlBuf.WriteString(" AND `v2` = ?")
-		args = append(args, line.V2)
-	}
-	if line.V3 != "" {
-		sqlBuf.WriteString(" AND `v3` = ?")
-		args = append(args, line.V3)
-	}
-	if line.V4 != "" {
-		sqlBuf.WriteString(" AND `v4` = ?")
-		args = append(args, line.V4)
-	}
-	if line.V5 != "" {
-		sqlBuf.WriteString(" AND `v5` = ?")
-		args = append(args, line.V5)
+	args := make([]interface{}, 0, 4)
+	args = append(args, line.PType)
+
+	elem := reflect.ValueOf(line).Elem()
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
+		value := f.String()
+		if value == "" {
+			continue
+		}
+
+		name := f.Type().Name()
+		if name != "" && name[0] == 'v' {
+			sqlBuf.WriteString(" AND `")
+			sqlBuf.WriteString(name)
+			sqlBuf.WriteString("` = ")
+
+			switch p.db.DriverName() {
+			case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
+				sqlBuf.WriteString("` = $")
+				sqlBuf.WriteByte(name[1])
+			case "oci8", "ora", "goracle":
+				sqlBuf.WriteString("` = :")
+				sqlBuf.WriteString(name)
+			case "sqlserver":
+				sqlBuf.WriteString("` = @")
+				sqlBuf.WriteString(name)
+			default:
+				sqlBuf.WriteString("` = ?")
+			}
+
+			args = append(args, value)
+		}
 	}
 
 	_, err := p.db.Exec(sqlBuf.String(), args...)

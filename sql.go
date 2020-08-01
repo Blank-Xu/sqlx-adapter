@@ -29,12 +29,12 @@ CREATE TABLE %s
 );
 CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
-	sqlIsTableExist = "SELECT 1 FROM `%s`;"
-	sqlInsertRow    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (?, ?, ?, ?, ?, ?, ?);"
-	sqlDeleteAll    = "DELETE FROM `%s`;"
-	sqlDeleteRow    = "DELETE FROM `%s` WHERE `p_type` = :p_type AND `v0` = :v0 AND `v1` = :v1 AND `v2` = :v2 AND `v3` = :v3 AND `v4` = :v4 AND `v5` = :v5;"
-	sqlDeleteByArgs = "DELETE FROM `%s` WHERE `p_type` = :p_type"
-	sqlSelectAll    = "SELECT * FROM `%s`;"
+	sqlIsTableExist = "SELECT 1 FROM `%s`"
+	sqlInsertRow    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	sqlDeleteAll    = "DELETE FROM `%s`"
+	sqlDeleteRow    = "DELETE FROM `%s` WHERE `p_type` = ? AND `v0` = ? AND `v1` = ? AND `v2` = ? AND `v3` = ? AND `v4` = ? AND `v5` = ?"
+	sqlDeleteByArgs = "DELETE FROM `%s` WHERE `p_type` = ?"
+	sqlSelectAll    = "SELECT * FROM `%s`"
 )
 
 // for Sqlite3
@@ -87,6 +87,9 @@ CREATE TABLE %s
 );
 CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
+	sqlInsertRowPostgresql    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+	sqlDeleteRowPostgresql    = "DELETE FROM `%s` WHERE `p_type` = $1 AND `v0` = $2 AND `v1` = $3 AND `v2` = $4 AND `v3` = $5 AND `v4` = $6 AND `v5` = $7"
+	sqlDeleteByArgsPostgresql = "DELETE FROM `%s` WHERE `p_type` = $1"
 )
 
 // for Sqlserver
@@ -104,6 +107,9 @@ CREATE TABLE %s
 );
 CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
+	sqlInsertRowSqlserver    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (@p_type, @v0, @v1, @v2, @v3, @v4, @v5)"
+	sqlDeleteRowSqlserver    = "DELETE FROM `%s` WHERE `p_type` = @p_type AND `v0` = @v0 AND `v1` = @v1 AND `v2` = @v2 AND `v3` = @v3 AND `v4` = @v4 AND `v5` = @v5"
+	sqlDeleteByArgsSqlserver = "DELETE FROM `%s` WHERE `p_type` = @p_type"
 )
 
 // for Oracle
@@ -121,4 +127,7 @@ CREATE TABLE %s
 );
 CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
+	sqlInsertRowOracle    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (:p_type, :v0, :v1, :v2, :v3, :v4, :v5)"
+	sqlDeleteRowOracle    = "DELETE FROM `%s` WHERE `p_type` = :p_type AND `v0` = :v0 AND `v1` = :v1 AND `v2` = :v2 AND `v3` = :v3 AND `v4` = :v4 AND `v5` = :v5"
+	sqlDeleteByArgsOracle = "DELETE FROM `%s` WHERE `p_type` = :p_type"
 )
