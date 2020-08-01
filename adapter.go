@@ -84,6 +84,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 func (p *Adapter) genSql() {
 	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
+
 	p.sqlInsertRow = fmt.Sprintf(sqlInsertRow, p.tableName)
 	p.sqlDeleteAll = fmt.Sprintf(sqlDeleteAll, p.tableName)
 	p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRow, p.tableName)
@@ -187,7 +188,7 @@ func (p *Adapter) deleteByArgs(line *CasbinRule) error {
 }
 
 func (p *Adapter) deleteAndInsetRows(lines []*CasbinRule) error {
-	tx, err := p.db.Begin()
+	tx, err := p.db.Beginx()
 	if err != nil {
 		return err
 	}
@@ -199,13 +200,28 @@ func (p *Adapter) deleteAndInsetRows(lines []*CasbinRule) error {
 		return err
 	}
 
+	stmt, err := tx.Preparex(p.sqlInsertRow)
+	if err != nil {
+		if err1 := tx.Rollback(); err1 != nil {
+			err = fmt.Errorf("preparex err: %v, rollback err: %v", err, err1)
+		}
+		return err
+	}
+
 	for _, line := range lines {
-		if _, err = tx.Exec(p.sqlInsertRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5); err != nil {
+		if _, err = stmt.Exec(line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5); err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
 				err = fmt.Errorf("insert err: %v, rollback err: %v", err, err1)
 			}
 			return err
 		}
+	}
+
+	if err = stmt.Close(); err != nil {
+		if err1 := tx.Rollback(); err1 != nil {
+			err = fmt.Errorf("stmt close err: %v, rollback err: %v", err, err1)
+		}
+		return err
 	}
 
 	return tx.Commit()
@@ -257,39 +273,41 @@ func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 
 func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	line := savePolicyLine(ptype, rule)
-	return p.deleteRow(line)
+	return p.deleteByArgs(line)
 }
 
 func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := CasbinRule{PType: ptype}
 
-	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
+	l := fieldIndex + len(fieldValues)
+	if fieldIndex <= 0 && 0 < l {
 		line.V0 = fieldValues[0-fieldIndex]
 	}
-	if fieldIndex <= 1 && 1 < fieldIndex+len(fieldValues) {
+	if fieldIndex <= 1 && 1 < l {
 		line.V1 = fieldValues[1-fieldIndex]
 	}
-	if fieldIndex <= 2 && 2 < fieldIndex+len(fieldValues) {
+	if fieldIndex <= 2 && 2 < l {
 		line.V2 = fieldValues[2-fieldIndex]
 	}
-	if fieldIndex <= 3 && 3 < fieldIndex+len(fieldValues) {
+	if fieldIndex <= 3 && 3 < l {
 		line.V3 = fieldValues[3-fieldIndex]
 	}
-	if fieldIndex <= 4 && 4 < fieldIndex+len(fieldValues) {
+	if fieldIndex <= 4 && 4 < l {
 		line.V4 = fieldValues[4-fieldIndex]
 	}
-	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
+	if fieldIndex <= 5 && 5 < l {
 		line.V5 = fieldValues[5-fieldIndex]
 	}
 
-	return p.deleteRow(&line)
+	return p.deleteByArgs(&line)
 }
 
 func loadPolicyLine(line *CasbinRule, model model.Model) {
 	var lineBuf bytes.Buffer
-	lineBuf.Grow(32)
 
+	lineBuf.Grow(32)
 	lineBuf.WriteString(line.PType)
+
 	if line.V0 != "" {
 		lineBuf.WriteByte(',')
 		lineBuf.WriteString(line.V0)
@@ -321,22 +339,23 @@ func loadPolicyLine(line *CasbinRule, model model.Model) {
 func savePolicyLine(ptype string, rule []string) *CasbinRule {
 	line := CasbinRule{PType: ptype}
 
-	if len(rule) > 0 {
+	l := len(rule)
+	if l > 0 {
 		line.V0 = rule[0]
 	}
-	if len(rule) > 1 {
+	if l > 1 {
 		line.V1 = rule[1]
 	}
-	if len(rule) > 2 {
+	if l > 2 {
 		line.V2 = rule[2]
 	}
-	if len(rule) > 3 {
+	if l > 3 {
 		line.V3 = rule[3]
 	}
-	if len(rule) > 4 {
+	if l > 4 {
 		line.V4 = rule[4]
 	}
-	if len(rule) > 5 {
+	if l > 5 {
 		line.V5 = rule[5]
 	}
 
