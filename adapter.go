@@ -79,7 +79,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		tableName = DefaultTableName
 	}
 
-	adapter := &Adapter{
+	adapter := Adapter{
 		db:        db,
 		tableName: tableName,
 	}
@@ -92,7 +92,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		}
 	}
 
-	return adapter, nil
+	return &adapter, nil
 }
 
 func (p *Adapter) genSql() {
@@ -163,11 +163,10 @@ func (p *Adapter) deleteRow(line *CasbinRule) error {
 }
 
 func (p *Adapter) deleteByArgs(line *CasbinRule) error {
-	if line == nil {
-		return errors.New("data is nil")
-	}
+	var sqlBuf bytes.Buffer
+	sqlBuf.Grow(32)
 
-	sqlBuf := bytes.NewBufferString(p.sqlDeleteByArgs)
+	sqlBuf.WriteString(p.sqlDeleteByArgs)
 
 	args := make([]interface{}, 0, 4)
 	args = append(args, line.PType)
@@ -209,7 +208,7 @@ func (p *Adapter) deleteByArgs(line *CasbinRule) error {
 	return err
 }
 
-func (p *Adapter) truncateAndInsetRows(lines []*CasbinRule) error {
+func (p *Adapter) truncateAndInsetRows(lines []CasbinRule) error {
 	err := p.truncateTable()
 	if err != nil {
 		return err
@@ -255,13 +254,16 @@ func (p *Adapter) truncateAndInsetRows(lines []*CasbinRule) error {
 }
 
 func (p *Adapter) selectAll() (lines []*CasbinRule, err error) {
-	lines = make([]*CasbinRule, 0, 50)
+	lines = make([]*CasbinRule, 0, 32)
 	err = p.db.Select(&lines, p.sqlSelectAll)
 	return
 }
 
 func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) {
-	sqlBuf := bytes.NewBufferString(p.sqlSelectWhere)
+	var sqlBuf bytes.Buffer
+	sqlBuf.Grow(32)
+
+	sqlBuf.WriteString(p.sqlSelectWhere)
 
 	params := make([]interface{}, 0, 4)
 	if len(filter.PType) > 0 {
@@ -340,7 +342,7 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 }
 
 func (p *Adapter) SavePolicy(model model.Model) error {
-	lines := make([]*CasbinRule, 0, 32)
+	lines := make([]CasbinRule, 0, 32)
 
 	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {
@@ -362,17 +364,19 @@ func (p *Adapter) SavePolicy(model model.Model) error {
 func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	line := p.genPolicyLine(ptype, rule)
 
-	return p.insertRow(line)
+	return p.insertRow(&line)
 }
 
 func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	line := p.genPolicyLine(ptype, rule)
 
-	return p.deleteByArgs(line)
+	return p.deleteByArgs(&line)
 }
 
 func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
-	line := CasbinRule{PType: ptype}
+	line := CasbinRule{
+		PType: ptype,
+	}
 
 	l := fieldIndex + len(fieldValues)
 	if fieldIndex <= 0 && 0 < l {
@@ -457,8 +461,10 @@ func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
 	persist.LoadPolicyLine(lineBuf.String(), model)
 }
 
-func (Adapter) genPolicyLine(ptype string, rule []string) *CasbinRule {
-	line := CasbinRule{PType: ptype}
+func (Adapter) genPolicyLine(ptype string, rule []string) CasbinRule {
+	line := CasbinRule{
+		PType: ptype,
+	}
 
 	l := len(rule)
 	if l > 0 {
@@ -480,5 +486,5 @@ func (Adapter) genPolicyLine(ptype string, rule []string) *CasbinRule {
 		line.V5 = rule[5]
 	}
 
-	return &line
+	return line
 }
