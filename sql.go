@@ -29,12 +29,14 @@ CREATE TABLE %s
 );
 CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
-	sqlIsTableExist = "SELECT 1 FROM `%s`"
-	sqlInsertRow    = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (?, ?, ?, ?, ?, ?, ?)"
-	sqlDeleteAll    = "DELETE FROM `%s`"
-	sqlDeleteRow    = "DELETE FROM `%s` WHERE `p_type` = ? AND `v0` = ? AND `v1` = ? AND `v2` = ? AND `v3` = ? AND `v4` = ? AND `v5` = ?"
-	sqlDeleteByArgs = "DELETE FROM `%s` WHERE `p_type` = ?"
-	sqlSelectAll    = "SELECT * FROM `%s`"
+	sqlTruncateTable = "TRUNCATE TABLE %s"
+	sqlIsTableExist  = "SELECT 1 FROM `%s`"
+	sqlInsertRow     = "INSERT INTO `%s` (`p_type`, `v0`, `v1`, `v2`, `v3`, `v4`, `v5`) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	sqlDeleteAll     = "DELETE FROM `%s`"
+	sqlDeleteRow     = "DELETE FROM `%s` WHERE `p_type` = ? AND `v0` = ? AND `v1` = ? AND `v2` = ? AND `v3` = ? AND `v4` = ? AND `v5` = ?"
+	sqlDeleteByArgs  = "DELETE FROM `%s` WHERE `p_type` = ?"
+	sqlSelectAll     = "SELECT * FROM `%s`"
+	sqlSelectWhere   = "SELECT * FROM `%s` WHERE "
 )
 
 // for Sqlite3
@@ -52,6 +54,7 @@ CREATE TABLE IF NOT EXISTS %s
 );
 CREATE INDEX idx_casbin_rule_ptype ON %s (p_type, v0, v1);
 `
+	sqlTruncateTableSqlite3 = "DROP TABLE IF EXISTS %s;" + sqlCreateTableSqlite3
 )
 
 // for Mysql
