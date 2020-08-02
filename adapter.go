@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
@@ -64,6 +63,9 @@ type Filter struct {
 	V5    []string
 }
 
+// NewAdapter is the constructor for Adapter.
+// db should connected to database and controlled by user.
+// If tableName == "", the Adapter will automatically create a table named "casbin_rule".
 func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	if db == nil {
 		return nil, errors.New("db is nil")
@@ -95,8 +97,9 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	return &adapter, nil
 }
 
+// genSql generate sql based on db driver name.
 func (p *Adapter) genSql() {
-	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName)
+	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName, p.tableName)
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
@@ -110,105 +113,114 @@ func (p *Adapter) genSql() {
 
 	switch p.db.DriverName() {
 	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgresql, p.tableName, p.tableName)
-		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgresql, p.tableName)
-		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowPostgresql, p.tableName)
-		p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgsPostgresql, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)
+		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgres, p.tableName)
+		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowPostgres, p.tableName)
 	case "mysql":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName, p.tableName)
 	case "sqlite3":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName)
-		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)
+		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName, p.tableName, p.tableName, p.tableName)
 	case "oci8", "ora", "goracle":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableOracle, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableOracle, p.tableName, p.tableName, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowOracle, p.tableName)
 		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowOracle, p.tableName)
-		p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgsOracle, p.tableName)
 	case "sqlserver":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
 		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowSqlserver, p.tableName)
-		p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgsSqlserver, p.tableName)
 	}
 }
 
+// createTable create a not exists table by table name.
 func (p *Adapter) createTable() error {
 	_, err := p.db.Exec(p.sqlCreateTable)
 	return err
 }
 
+// truncateTable clear the storage.
 func (p *Adapter) truncateTable() error {
 	_, err := p.db.Exec(p.sqlTruncateTable)
 	return err
 }
 
+// isTableExist check the table exists.
 func (p *Adapter) isTableExist() bool {
 	_, err := p.db.Exec(p.sqlIsTableExist)
 	return err == nil
 }
 
-func (p *Adapter) insertRow(line *CasbinRule) error {
-	_, err := p.db.NamedExec(p.sqlInsertRow, line)
+// insertRow insert one row to storage.
+func (p *Adapter) insertRow(line CasbinRule) error {
+	_, err := p.db.Exec(p.sqlInsertRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5)
 	return err
 }
 
+// deleteAll clear the storage.
 func (p *Adapter) deleteAll() error {
 	_, err := p.db.Exec(p.sqlDeleteAll)
 	return err
 }
 
-func (p *Adapter) deleteRow(line *CasbinRule) error {
-	_, err := p.db.NamedExec(p.sqlDeleteRow, line)
+// deleteRow delete one row.
+func (p *Adapter) deleteRow(line CasbinRule) error {
+	_, err := p.db.Exec(p.sqlDeleteRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5)
 	return err
 }
 
-func (p *Adapter) deleteByArgs(line *CasbinRule) error {
+// deleteByArgs delete eligible data.
+func (p *Adapter) deleteByArgs(line CasbinRule) error {
 	var sqlBuf bytes.Buffer
-	sqlBuf.Grow(32)
 
+	sqlBuf.Grow(32)
 	sqlBuf.WriteString(p.sqlDeleteByArgs)
 
 	args := make([]interface{}, 0, 4)
 	args = append(args, line.PType)
 
-	elem := reflect.ValueOf(line).Elem()
-	for i := 0; i < elem.NumField(); i++ {
-		f := elem.Field(i)
-		value := f.String()
-		if value == "" {
-			continue
-		}
-
-		name := f.Type().Name()
-		if name != "" && name[0] == 'v' {
-			sqlBuf.WriteString(" AND `")
-			sqlBuf.WriteString(name)
-			sqlBuf.WriteString("` = ")
-
-			switch p.db.DriverName() {
-			case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-				sqlBuf.WriteString("` = $")
-				sqlBuf.WriteByte(name[1])
-			case "oci8", "ora", "goracle":
-				sqlBuf.WriteString("` = :")
-				sqlBuf.WriteString(name)
-			case "sqlserver":
-				sqlBuf.WriteString("` = @")
-				sqlBuf.WriteString(name)
-			default:
-				sqlBuf.WriteString("` = ?")
-			}
-
-			args = append(args, value)
-		}
+	if line.V0 != "" {
+		sqlBuf.WriteString(" AND v0 = ?")
+		args = append(args, line.V0)
+	}
+	if line.V1 != "" {
+		sqlBuf.WriteString(" AND v1 = ?")
+		args = append(args, line.V1)
+	}
+	if line.V2 != "" {
+		sqlBuf.WriteString(" AND v2 = ?")
+		args = append(args, line.V2)
+	}
+	if line.V3 != "" {
+		sqlBuf.WriteString(" AND v3 = ?")
+		args = append(args, line.V3)
+	}
+	if line.V4 != "" {
+		sqlBuf.WriteString(" AND v4 = ?")
+		args = append(args, line.V4)
+	}
+	if line.V5 != "" {
+		sqlBuf.WriteString(" AND v5 = ?")
+		args = append(args, line.V5)
 	}
 
-	_, err := p.db.Exec(sqlBuf.String(), args...)
+	query := sqlBuf.String()
+	if query == p.sqlDeleteByArgs {
+		return errors.New("invalid delete args")
+	}
+
+	switch p.db.DriverName() {
+	case "sqlite3", "mysql":
+	default:
+		query = p.db.Rebind(query)
+	}
+
+	_, err := p.db.Exec(query, args...)
 
 	return err
 }
 
-func (p *Adapter) truncateAndInsetRows(lines []CasbinRule) error {
+// truncateAndInsertRows clear storage and insert new rows.
+func (p *Adapter) truncateAndInsertRows(lines []CasbinRule) error {
 	err := p.truncateTable()
 	if err != nil {
 		return err
@@ -253,66 +265,68 @@ func (p *Adapter) truncateAndInsetRows(lines []CasbinRule) error {
 	return tx.Commit()
 }
 
+// selectAll select all data from the storage.
 func (p *Adapter) selectAll() (lines []*CasbinRule, err error) {
 	lines = make([]*CasbinRule, 0, 32)
 	err = p.db.Select(&lines, p.sqlSelectAll)
 	return
 }
 
+// selectWhereIn select for eligible data from the storage.
 func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) {
 	var sqlBuf bytes.Buffer
-	sqlBuf.Grow(32)
 
+	sqlBuf.Grow(32)
 	sqlBuf.WriteString(p.sqlSelectWhere)
 
 	params := make([]interface{}, 0, 4)
 	if len(filter.PType) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
-		sqlBuf.WriteString("`p_type` IN (?)")
+		// if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
+		// 	sqlBuf.WriteString(" AND ")
+		// }
+		sqlBuf.WriteString("p_type IN (?)")
 		params = append(params, filter.PType)
 	}
 	if len(filter.V0) > 0 {
 		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
 			sqlBuf.WriteString(" AND ")
 		}
-		sqlBuf.WriteString("`v0` IN (?)")
+		sqlBuf.WriteString("v0 IN (?)")
 		params = append(params, filter.V0)
 	}
 	if len(filter.V1) > 0 {
 		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
 			sqlBuf.WriteString(" AND ")
 		}
-		sqlBuf.WriteString("`v1` IN (?)")
+		sqlBuf.WriteString("v1 IN (?)")
 		params = append(params, filter.V1)
 	}
 	if len(filter.V2) > 0 {
 		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
 			sqlBuf.WriteString(" AND ")
 		}
-		sqlBuf.WriteString("`v2` IN (?)")
+		sqlBuf.WriteString("v2 IN (?)")
 		params = append(params, filter.V2)
 	}
 	if len(filter.V3) > 0 {
 		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
 			sqlBuf.WriteString(" AND ")
 		}
-		sqlBuf.WriteString("`v3` IN (?)")
+		sqlBuf.WriteString("v3 IN (?)")
 		params = append(params, filter.V3)
 	}
 	if len(filter.V4) > 0 {
 		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
 			sqlBuf.WriteString(" AND ")
 		}
-		sqlBuf.WriteString("`v4` IN (?)")
+		sqlBuf.WriteString("v4 IN (?)")
 		params = append(params, filter.V4)
 	}
 	if len(filter.V5) > 0 {
 		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
 			sqlBuf.WriteString(" AND ")
 		}
-		sqlBuf.WriteString("`v5` IN (?)")
+		sqlBuf.WriteString("v5 IN (?)")
 		params = append(params, filter.V5)
 	}
 
@@ -320,7 +334,12 @@ func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) 
 	if err != nil {
 		return
 	}
-	query = p.db.Rebind(query)
+
+	switch p.db.DriverName() {
+	case "sqlite3", "mysql":
+	default:
+		query = p.db.Rebind(query)
+	}
 
 	lines = make([]*CasbinRule, 0, 32)
 	err = p.db.Select(&lines, query, args...)
@@ -328,6 +347,7 @@ func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) 
 	return
 }
 
+// LoadPolicy load all policy rules from the storage.
 func (p *Adapter) LoadPolicy(model model.Model) error {
 	lines, err := p.selectAll()
 	if err != nil {
@@ -341,6 +361,7 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 	return nil
 }
 
+// SavePolicy save policy rules to the storage.
 func (p *Adapter) SavePolicy(model model.Model) error {
 	lines := make([]CasbinRule, 0, 32)
 
@@ -358,21 +379,24 @@ func (p *Adapter) SavePolicy(model model.Model) error {
 		}
 	}
 
-	return p.truncateAndInsetRows(lines)
+	return p.truncateAndInsertRows(lines)
 }
 
+// AddPolicy add one policy rule to the storage.
 func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	line := p.genPolicyLine(ptype, rule)
 
-	return p.insertRow(&line)
+	return p.insertRow(line)
 }
 
+// RemovePolicy remove policy rules from the storage.
 func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	line := p.genPolicyLine(ptype, rule)
 
-	return p.deleteByArgs(&line)
+	return p.deleteByArgs(line)
 }
 
+// RemoveFilteredPolicy remove policy rules that match the filter from the storage.
 func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := CasbinRule{
 		PType: ptype,
@@ -398,10 +422,10 @@ func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 		line.V5 = fieldValues[5-fieldIndex]
 	}
 
-	return p.deleteByArgs(&line)
+	return p.deleteByArgs(line)
 }
 
-// LoadFilteredPolicy loads only policy rules that match the filter.
+// LoadFilteredPolicy load policy rules that match the filter.
 func (p *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) error {
 	filterValue, ok := filter.(Filter)
 	if !ok {
@@ -422,7 +446,7 @@ func (p *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) erro
 	return nil
 }
 
-// IsFiltered returns true if the loaded policy has been filtered.
+// IsFiltered returns true if the loaded policy rules has been filtered.
 func (p *Adapter) IsFiltered() bool {
 	return p.isFiltered
 }
