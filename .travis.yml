@@ -7,9 +7,11 @@ go:
   - "1.12"
   - "1.13"
   - "1.14"
+  - tip
 
 before_install:
-#  - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
 
 before_script:
   - mysql -e 'CREATE DATABASE IF NOT EXISTS sqlx_adapter_test;'
@@ -17,7 +19,8 @@ before_script:
 
 script:
   - cd ./tests
-  - go test -v .
+  - go test -v -covermode=count -coverprofile=coverage.out
+  - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
 
 services:
   - mysql

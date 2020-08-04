@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
-	"strconv"
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
@@ -44,7 +42,7 @@ type Adapter struct {
 
 	isFiltered bool
 
-	sqlCreateTable   []string
+	sqlCreateTable   string
 	sqlTruncateTable string
 	sqlIsTableExist  string
 	sqlInsertRow     string
@@ -52,8 +50,6 @@ type Adapter struct {
 	sqlDeleteByArgs  string
 	sqlSelectAll     string
 	sqlSelectWhere   string
-
-	placeholders []string
 }
 
 type Filter struct {
@@ -80,10 +76,10 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		return nil, err
 	}
 
-	// switch db.DriverName() {
-	// case "oci8", "ora", "goracle":
-	// 	db.Mapper = reflectx.NewMapperFunc("db", strings.ToLower)
-	// }
+	switch db.DriverName() {
+	case "oci8", "ora", "goracle":
+		return nil, errors.New("sqlxadapter: please checkout 'oracle' branch")
+	}
 
 	if tableName == "" {
 		tableName = DefaultTableName
@@ -97,9 +93,6 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	// prepare different database sql
 	adapter.genSql()
 
-	// prepare different database placeholders
-	adapter.genPlaceholders()
-
 	if !adapter.isTableExist() {
 		if err = adapter.createTable(); err != nil {
 			return nil, err
@@ -111,12 +104,11 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 
 // genSql  generate sql based on db driver name.
 func (p *Adapter) genSql() {
-	p.sqlCreateTable = []string{fmt.Sprintf(sqlCreatTable, p.tableName),
-		fmt.Sprintf(sqlCreateIndex, p.tableName, p.tableName)}
+	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName, p.tableName)
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
-	p.sqlInsertRow = sqlInsertRow
+	p.sqlInsertRow = fmt.Sprintf(sqlInsertRow, p.tableName)
 	p.sqlDeleteAll = fmt.Sprintf(sqlDeleteAll, p.tableName)
 	p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgs, p.tableName)
 
@@ -125,105 +117,24 @@ func (p *Adapter) genSql() {
 
 	switch p.db.DriverName() {
 	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)}
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)
+		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgres, p.tableName)
 	case "mysql":
-		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreatTableMysql, p.tableName, p.tableName)}
+		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName, p.tableName)
 	case "sqlite3":
-		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)}
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)
 		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName, p.tableName, p.tableName, p.tableName)
-	// case "oci8", "ora", "goracle":
-	// 	p.tableName = strings.ToUpper(p.tableName)
-	// 	p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTableOracle, p.tableName),
-	// 		fmt.Sprintf(sqlCreateIndexOracle, p.tableName, p.tableName)}
 	case "sqlserver":
-		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName, p.tableName)}
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName, p.tableName)
+		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
 	}
-}
-
-// genPlaceholders  generate all placeholders by db driver name.
-func (p *Adapter) genPlaceholders() {
-	var line CasbinRule
-	// get the CasbinRule field size
-	l := reflect.TypeOf(line).NumField()
-
-	var phBuf bytes.Buffer
-
-	phBuf.Grow(16)
-
-	p.placeholders = make([]string, l)
-	for idx := range p.placeholders {
-		switch p.db.DriverName() {
-		case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-			phBuf.WriteByte('$')
-			phBuf.WriteString(strconv.Itoa(idx + 1))
-		// case "oci8", "ora", "goracle":
-		// 	phBuf.WriteString(":arg")
-		// 	phBuf.WriteString(strconv.Itoa(idx + 1))
-		case "sqlserver":
-			phBuf.WriteString("@p")
-			phBuf.WriteString(strconv.Itoa(idx + 1))
-		default: // mysql, sqlite3
-			phBuf.WriteString("?")
-		}
-
-		p.placeholders[idx] = phBuf.String()
-
-		phBuf.WriteByte(',')
-	}
-}
-
-// genSqlInsertRow  generate insert sql and args.
-func (p *Adapter) genSqlInsertRow(line CasbinRule) (sql string, args []interface{}) {
-	var colsBuf bytes.Buffer
-
-	colsBuf.Grow(16)
-	colsBuf.WriteString("p_type")
-
-	args = make([]interface{}, 0, 4)
-	args = append(args, line.PType)
-
-	if line.V0 != "" {
-		colsBuf.WriteString(",v0")
-		args = append(args, line.V0)
-	}
-	if line.V1 != "" {
-		colsBuf.WriteString(",v1")
-		args = append(args, line.V1)
-	}
-	if line.V2 != "" {
-		colsBuf.WriteString(",v2")
-		args = append(args, line.V2)
-	}
-	if line.V3 != "" {
-		colsBuf.WriteString(",v3")
-		args = append(args, line.V3)
-	}
-	if line.V4 != "" {
-		colsBuf.WriteString(",v4")
-		args = append(args, line.V4)
-	}
-	if line.V5 != "" {
-		colsBuf.WriteString(",v5")
-		args = append(args, line.V5)
-	}
-
-	sql = fmt.Sprintf(p.sqlInsertRow,
-		p.tableName,
-		colsBuf.String(),
-		p.placeholders[len(args)-1])
-
-	return
 }
 
 // createTable  create a not exists table.
-func (p *Adapter) createTable() (err error) {
-	for _, sql := range p.sqlCreateTable {
-		if _, err = p.db.Exec(sql); err != nil {
-			return
-		}
-	}
+func (p *Adapter) createTable() error {
+	_, err := p.db.Exec(p.sqlCreateTable)
 
-	return
+	return err
 }
 
 // truncateTable  clear the table.
@@ -235,8 +146,8 @@ func (p *Adapter) truncateTable() error {
 
 // isTableExist  check the table exists.
 func (p *Adapter) isTableExist() bool {
-	var i []interface{}
-	err := p.db.Select(&i, p.sqlIsTableExist)
+	_, err := p.db.Exec(p.sqlIsTableExist)
+
 	return err == nil
 }
 
@@ -246,8 +157,7 @@ func (p *Adapter) insertRow(line CasbinRule) error {
 	// 	return errors.New("invalid params")
 	// }
 
-	sql, args := p.genSqlInsertRow(line)
-	_, err := p.db.Exec(sql, args...)
+	_, err := p.db.Exec(p.sqlInsertRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5)
 
 	return err
 }
@@ -330,16 +240,30 @@ func (p *Adapter) truncateAndInsertRows(lines []CasbinRule) error {
 	// 	return err
 	// }
 
-	for _, line := range lines {
-		sql, args := p.genSqlInsertRow(line)
+	stmt, err := tx.Preparex(p.sqlInsertRow)
+	if err != nil {
+		if err1 := tx.Rollback(); err1 != nil {
+			err = fmt.Errorf("preparex err: %v, rollback err: %v", err, err1)
+		}
+		return err
+	}
 
-		if _, err = tx.Exec(sql, args...); err != nil {
+	for _, line := range lines {
+		if _, err = stmt.Exec(line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5); err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
 				err = fmt.Errorf("exec err: %v, rollback err: %v", err, err1)
 			}
 
 			return err
 		}
+	}
+
+	if err = stmt.Close(); err != nil {
+		if err1 := tx.Rollback(); err1 != nil {
+			err = fmt.Errorf("stmt close err: %v, rollback err: %v", err, err1)
+		}
+
+		return err
 	}
 
 	if err = tx.Commit(); err != nil {

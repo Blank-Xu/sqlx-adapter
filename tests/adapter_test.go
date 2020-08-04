@@ -25,11 +25,10 @@ import (
 
 	sqlxadapter "github.com/Blank-Xu/sqlx-adapter"
 
-	// _ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	// not support yet  _ "github.com/mattn/go-oci8"
 )
 
 var (
@@ -41,7 +40,6 @@ var (
 		"mysql":    "root:@tcp(127.0.0.1:3306)/sqlx_adapter_test",
 		"postgres": "user=postgres host=127.0.0.1 port=5432 dbname=sqlx_adapter_test sslmode=disable",
 		// "sqlserver": "sqlserver://sa:YourPassword@127.0.0.1:1433?database=sqlx_adapter_test&connection+timeout=30",
-		// "oci8": "system/YourPassword@127.0.0.1:1521/sqlx_adapter_test",
 	}
 )
 

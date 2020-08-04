@@ -1,13 +1,21 @@
 # sqlx-adapter
 
-Sqlx Adapter is a [Sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
+[![Build Status](https://travis-ci.org/Blank-Xu/sqlx-adapter.svg?branch=master)](https://travis-ci.org/Blank-Xu/sqlx-adapter)[![Coverage Status](https://coveralls.io/repos/github/Blank-Xu/sqlx-adapter/badge.svg?branch=master)](https://coveralls.io/github/Blank-Xu/sqlx-adapter?branch=master)
+
+sqlx-adapter is a [Sqlx](https://github.com/jmoiron/sqlx) Adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
 With this library, Casbin can load policy lines from Sqlx supported databases or save policy lines.
 
+
 ## Tested Database
+### `master` branch
 - SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
 - Mysql(v5.5): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
+- MariaDB(v10.2): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
 - Postgres(v9.6): [github.com/lib/pq](https://github.com/lib/pq)
-- MsSql(v2008): [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
+- SqlServer(v2008R2-SP3): [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
+
+### `oracle` branch(under development)
+- Oracle(v11g): [github.com/mattn/go-oci8](https://github.com/mattn/go-oci8)
 
 
 ## Installation
@@ -154,6 +162,7 @@ func main() {
 ## Getting Help
 
 - [Casbin](https://github.com/casbin/casbin)
+
 
 ## License
 

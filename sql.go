@@ -25,11 +25,11 @@ CREATE TABLE %s(
     v3     varchar(255),
     v4     varchar(255),
     v5     varchar(255)
-)`
-	sqlCreateIndex   = "CREATE INDEX idx_%s_ptype ON %s (p_type, v0, v1)"
+);
+CREATE INDEX idx_%s_ptype ON %s (p_type, v0, v1);`
 	sqlTruncateTable = "TRUNCATE TABLE %s"
 	sqlIsTableExist  = "SELECT 1 FROM %s"
-	sqlInsertRow     = "INSERT INTO %s (%s) VALUES (%s)"
+	sqlInsertRow     = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	sqlDeleteAll     = "DELETE FROM %s"
 	sqlDeleteByArgs  = "DELETE FROM %s WHERE p_type = ?"
 	sqlSelectAll     = "SELECT * FROM %s"
@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS %s(
     v5     varchar(255) DEFAULT '' NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_%s_ptype ON %s (p_type, v0, v1);`
+	sqlInsertRowPostgres = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES ($1, $2, $3, $4, $5, $6, $7)"
 )
 
 // for Sqlserver
@@ -95,19 +96,5 @@ CREATE TABLE %s(
     v5     nvarchar(255) DEFAULT '' NOT NULL
 );
 CREATE INDEX idx_%s_ptype ON %s (p_type, v0, v1);`
+	sqlInsertRowSqlserver = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)"
 )
-
-// for Oracle
-// const (
-// 	sqlCreateTableOracle = `
-// CREATE TABLE %s(
-// 	"p_type" NVARCHAR2(32)  DEFAULT '',
-//     "v0"     NVARCHAR2(255) DEFAULT '',
-//     "v1"     NVARCHAR2(255) DEFAULT '',
-//     "v2"     NVARCHAR2(255) DEFAULT '',
-//     "v3"     NVARCHAR2(255) DEFAULT '',
-//     "v4"     NVARCHAR2(255) DEFAULT '',
-//     "v5"     NVARCHAR2(255) DEFAULT ''
-// )`
-// 	sqlCreateIndexOracle = `CREATE INDEX IDX_%s_PTYPE ON %s ("p_type", "v0", "v1")`
-// )
