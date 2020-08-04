@@ -28,9 +28,8 @@ import (
 	// _ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-
-	// _ "github.com/mattn/go-oci8"
 	_ "github.com/mattn/go-sqlite3"
+	// not support yet  _ "github.com/mattn/go-oci8"
 )
 
 var (
@@ -56,7 +55,7 @@ var (
 		{PType: "p", V0: "data1_admin", V1: "data2", V2: "write"},
 		{PType: "g", V0: "alice", V1: "data2_admin"},
 		{PType: "g", V0: "bob", V1: "data2_admin", V2: "test"},
-		{PType: "g", V0: "bob", V1: "data1_admin", V2: "test", V3: "test", V4: "test", V5: "test"},
+		{PType: "g", V0: "bob", V1: "data1_admin", V2: "test2", V3: "test3", V4: "test4", V5: "test5"},
 	}
 
 	filter = sqlxadapter.Filter{
@@ -143,10 +142,6 @@ func testSql(t *testing.T, db *sqlx.DB, tableName string) {
 
 	if err = test.TruncateAndInsertRows(lines); err != nil {
 		t.Fatal("TruncateAndInsertRows test failed, err: ", err)
-	}
-
-	if err = test.DeleteRow(lines[0]); err != nil {
-		t.Fatal("DeleteRow test failed, err: ", err)
 	}
 
 	if err = test.DeleteByArgs(sqlxadapter.CasbinRule{}); err != nil && err.Error() != "invalid delete args" {

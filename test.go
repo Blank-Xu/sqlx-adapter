@@ -18,7 +18,7 @@ import (
 	"github.com/casbin/casbin/v2/model"
 )
 
-// for test all Adapter methods
+// Test  for test Adapter private methods
 type Test struct {
 	Adapter *Adapter
 }
@@ -41,10 +41,6 @@ func (p *Test) InsertRow(line CasbinRule) error {
 
 func (p *Test) DeleteAll() error {
 	return p.Adapter.deleteAll()
-}
-
-func (p *Test) DeleteRow(line CasbinRule) error {
-	return p.Adapter.deleteRow(line)
 }
 
 func (p *Test) DeleteByArgs(line CasbinRule) error {

@@ -3,16 +3,11 @@
 Sqlx Adapter is a [Sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
 With this library, Casbin can load policy lines from Sqlx supported databases or save policy lines.
 
-## Database Support
-
-### tested database
-- Mysql && MariaDB: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
-- Postgres: [github.com/lib/pq](https://github.com/lib/pq)
+## Tested Database
 - SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
-- MsSql: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
-
-## no tested
-- Oracle: [github.com/mattn/go-oci8](https://github.com/mattn/go-oci8) (experiment)
+- Mysql(v5.5): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
+- Postgres(v9.6): [github.com/lib/pq](https://github.com/lib/pq)
+- MsSql(v2008): [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
 
 
 ## Installation

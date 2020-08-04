@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
@@ -42,15 +44,16 @@ type Adapter struct {
 
 	isFiltered bool
 
-	sqlCreateTable   string
+	sqlCreateTable   []string
 	sqlTruncateTable string
 	sqlIsTableExist  string
 	sqlInsertRow     string
 	sqlDeleteAll     string
-	sqlDeleteRow     string
 	sqlDeleteByArgs  string
 	sqlSelectAll     string
 	sqlSelectWhere   string
+
+	placeholders []string
 }
 
 type Filter struct {
@@ -77,6 +80,11 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		return nil, err
 	}
 
+	// switch db.DriverName() {
+	// case "oci8", "ora", "goracle":
+	// 	db.Mapper = reflectx.NewMapperFunc("db", strings.ToLower)
+	// }
+
 	if tableName == "" {
 		tableName = DefaultTableName
 	}
@@ -86,7 +94,11 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		tableName: tableName,
 	}
 
+	// prepare different database sql
 	adapter.genSql()
+
+	// prepare different database placeholders
+	adapter.genPlaceholders()
 
 	if !adapter.isTableExist() {
 		if err = adapter.createTable(); err != nil {
@@ -97,15 +109,15 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	return &adapter, nil
 }
 
-// genSql generate sql based on db driver name.
+// genSql  generate sql based on db driver name.
 func (p *Adapter) genSql() {
-	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName, p.tableName)
+	p.sqlCreateTable = []string{fmt.Sprintf(sqlCreatTable, p.tableName),
+		fmt.Sprintf(sqlCreateIndex, p.tableName, p.tableName)}
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
-	p.sqlInsertRow = fmt.Sprintf(sqlInsertRow, p.tableName)
+	p.sqlInsertRow = sqlInsertRow
 	p.sqlDeleteAll = fmt.Sprintf(sqlDeleteAll, p.tableName)
-	p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRow, p.tableName)
 	p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgs, p.tableName)
 
 	p.sqlSelectAll = fmt.Sprintf(sqlSelectAll, p.tableName)
@@ -113,62 +125,141 @@ func (p *Adapter) genSql() {
 
 	switch p.db.DriverName() {
 	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)
-		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgres, p.tableName)
-		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowPostgres, p.tableName)
+		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)}
 	case "mysql":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName, p.tableName)
+		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreatTableMysql, p.tableName, p.tableName)}
 	case "sqlite3":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)
+		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)}
 		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName, p.tableName, p.tableName, p.tableName)
-	case "oci8", "ora", "goracle":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableOracle, p.tableName, p.tableName, p.tableName)
-		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowOracle, p.tableName)
-		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowOracle, p.tableName)
+	// case "oci8", "ora", "goracle":
+	// 	p.tableName = strings.ToUpper(p.tableName)
+	// 	p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTableOracle, p.tableName),
+	// 		fmt.Sprintf(sqlCreateIndexOracle, p.tableName, p.tableName)}
 	case "sqlserver":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName, p.tableName)
-		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
-		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowSqlserver, p.tableName)
+		p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName, p.tableName)}
 	}
 }
 
-// createTable create a not exists table by table name.
-func (p *Adapter) createTable() error {
-	_, err := p.db.Exec(p.sqlCreateTable)
-	return err
+// genPlaceholders  generate all placeholders by db driver name.
+func (p *Adapter) genPlaceholders() {
+	var line CasbinRule
+	// get the CasbinRule field size
+	l := reflect.TypeOf(line).NumField()
+
+	var phBuf bytes.Buffer
+
+	phBuf.Grow(16)
+
+	p.placeholders = make([]string, l)
+	for idx := range p.placeholders {
+		switch p.db.DriverName() {
+		case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
+			phBuf.WriteByte('$')
+			phBuf.WriteString(strconv.Itoa(idx + 1))
+		// case "oci8", "ora", "goracle":
+		// 	phBuf.WriteString(":arg")
+		// 	phBuf.WriteString(strconv.Itoa(idx + 1))
+		case "sqlserver":
+			phBuf.WriteString("@p")
+			phBuf.WriteString(strconv.Itoa(idx + 1))
+		default: // mysql, sqlite3
+			phBuf.WriteString("?")
+		}
+
+		p.placeholders[idx] = phBuf.String()
+
+		phBuf.WriteByte(',')
+	}
 }
 
-// truncateTable clear the storage.
+// genSqlInsertRow  generate insert sql and args.
+func (p *Adapter) genSqlInsertRow(line CasbinRule) (sql string, args []interface{}) {
+	var colsBuf bytes.Buffer
+
+	colsBuf.Grow(16)
+	colsBuf.WriteString("p_type")
+
+	args = make([]interface{}, 0, 4)
+	args = append(args, line.PType)
+
+	if line.V0 != "" {
+		colsBuf.WriteString(",v0")
+		args = append(args, line.V0)
+	}
+	if line.V1 != "" {
+		colsBuf.WriteString(",v1")
+		args = append(args, line.V1)
+	}
+	if line.V2 != "" {
+		colsBuf.WriteString(",v2")
+		args = append(args, line.V2)
+	}
+	if line.V3 != "" {
+		colsBuf.WriteString(",v3")
+		args = append(args, line.V3)
+	}
+	if line.V4 != "" {
+		colsBuf.WriteString(",v4")
+		args = append(args, line.V4)
+	}
+	if line.V5 != "" {
+		colsBuf.WriteString(",v5")
+		args = append(args, line.V5)
+	}
+
+	sql = fmt.Sprintf(p.sqlInsertRow,
+		p.tableName,
+		colsBuf.String(),
+		p.placeholders[len(args)-1])
+
+	return
+}
+
+// createTable  create a not exists table.
+func (p *Adapter) createTable() (err error) {
+	for _, sql := range p.sqlCreateTable {
+		if _, err = p.db.Exec(sql); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+// truncateTable  clear the table.
 func (p *Adapter) truncateTable() error {
 	_, err := p.db.Exec(p.sqlTruncateTable)
+
 	return err
 }
 
-// isTableExist check the table exists.
+// isTableExist  check the table exists.
 func (p *Adapter) isTableExist() bool {
-	_, err := p.db.Exec(p.sqlIsTableExist)
+	var i []interface{}
+	err := p.db.Select(&i, p.sqlIsTableExist)
 	return err == nil
 }
 
-// insertRow insert one row to storage.
+// insertRow  insert one row to table.
 func (p *Adapter) insertRow(line CasbinRule) error {
-	_, err := p.db.Exec(p.sqlInsertRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5)
+	// if line.PType == "" {
+	// 	return errors.New("invalid params")
+	// }
+
+	sql, args := p.genSqlInsertRow(line)
+	_, err := p.db.Exec(sql, args...)
+
 	return err
 }
 
-// deleteAll clear the storage.
+// deleteAll  clear the table.
 func (p *Adapter) deleteAll() error {
 	_, err := p.db.Exec(p.sqlDeleteAll)
+
 	return err
 }
 
-// deleteRow delete one row.
-func (p *Adapter) deleteRow(line CasbinRule) error {
-	_, err := p.db.Exec(p.sqlDeleteRow, line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5)
-	return err
-}
-
-// deleteByArgs delete eligible data.
+// deleteByArgs  delete eligible data.
 func (p *Adapter) deleteByArgs(line CasbinRule) error {
 	var sqlBuf bytes.Buffer
 
@@ -210,6 +301,7 @@ func (p *Adapter) deleteByArgs(line CasbinRule) error {
 
 	switch p.db.DriverName() {
 	case "sqlite3", "mysql":
+
 	default:
 		query = p.db.Rebind(query)
 	}
@@ -219,7 +311,7 @@ func (p *Adapter) deleteByArgs(line CasbinRule) error {
 	return err
 }
 
-// truncateAndInsertRows clear storage and insert new rows.
+// truncateAndInsertRows  clear table and insert new rows.
 func (p *Adapter) truncateAndInsertRows(lines []CasbinRule) error {
 	err := p.truncateTable()
 	if err != nil {
@@ -238,41 +330,36 @@ func (p *Adapter) truncateAndInsertRows(lines []CasbinRule) error {
 	// 	return err
 	// }
 
-	stmt, err := tx.Preparex(p.sqlInsertRow)
-	if err != nil {
-		if err1 := tx.Rollback(); err1 != nil {
-			err = fmt.Errorf("preparex err: %v, rollback err: %v", err, err1)
-		}
-		return err
-	}
-
 	for _, line := range lines {
-		if _, err = stmt.Exec(line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5); err != nil {
+		sql, args := p.genSqlInsertRow(line)
+
+		if _, err = tx.Exec(sql, args...); err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
-				err = fmt.Errorf("insert err: %v, rollback err: %v", err, err1)
+				err = fmt.Errorf("exec err: %v, rollback err: %v", err, err1)
 			}
+
 			return err
 		}
 	}
 
-	if err = stmt.Close(); err != nil {
+	if err = tx.Commit(); err != nil {
 		if err1 := tx.Rollback(); err1 != nil {
-			err = fmt.Errorf("stmt close err: %v, rollback err: %v", err, err1)
+			err = fmt.Errorf("commit err: %v, rollback err: %v", err, err1)
 		}
-		return err
 	}
 
-	return tx.Commit()
+	return err
 }
 
-// selectAll select all data from the storage.
-func (p *Adapter) selectAll() (lines []*CasbinRule, err error) {
-	lines = make([]*CasbinRule, 0, 32)
-	err = p.db.Select(&lines, p.sqlSelectAll)
-	return
+// selectAll  select all data from the table.
+func (p *Adapter) selectAll() ([]*CasbinRule, error) {
+	// make a slice with capacity
+	lines := make([]*CasbinRule, 0, 32)
+
+	return lines, p.db.Select(&lines, p.sqlSelectAll)
 }
 
-// selectWhereIn select for eligible data from the storage.
+// selectWhereIn  select for eligible data from the table.
 func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) {
 	var sqlBuf bytes.Buffer
 
@@ -337,6 +424,7 @@ func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) 
 
 	switch p.db.DriverName() {
 	case "sqlite3", "mysql":
+
 	default:
 		query = p.db.Rebind(query)
 	}
@@ -347,7 +435,7 @@ func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) 
 	return
 }
 
-// LoadPolicy load all policy rules from the storage.
+// LoadPolicy  load all policy rules from the storage.
 func (p *Adapter) LoadPolicy(model model.Model) error {
 	lines, err := p.selectAll()
 	if err != nil {
@@ -361,7 +449,7 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 	return nil
 }
 
-// SavePolicy save policy rules to the storage.
+// SavePolicy  save policy rules to the storage.
 func (p *Adapter) SavePolicy(model model.Model) error {
 	lines := make([]CasbinRule, 0, 32)
 
@@ -382,21 +470,21 @@ func (p *Adapter) SavePolicy(model model.Model) error {
 	return p.truncateAndInsertRows(lines)
 }
 
-// AddPolicy add one policy rule to the storage.
+// AddPolicy  add one policy rule to the storage.
 func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	line := p.genPolicyLine(ptype, rule)
 
 	return p.insertRow(line)
 }
 
-// RemovePolicy remove policy rules from the storage.
+// RemovePolicy  remove policy rules from the storage.
 func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	line := p.genPolicyLine(ptype, rule)
 
 	return p.deleteByArgs(line)
 }
 
-// RemoveFilteredPolicy remove policy rules that match the filter from the storage.
+// RemoveFilteredPolicy  remove policy rules that match the filter from the storage.
 func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := CasbinRule{
 		PType: ptype,
@@ -425,7 +513,7 @@ func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	return p.deleteByArgs(line)
 }
 
-// LoadFilteredPolicy load policy rules that match the filter.
+// LoadFilteredPolicy  load policy rules that match the filter.
 func (p *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) error {
 	filterValue, ok := filter.(Filter)
 	if !ok {
@@ -446,7 +534,7 @@ func (p *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) erro
 	return nil
 }
 
-// IsFiltered returns true if the loaded policy rules has been filtered.
+// IsFiltered  returns true if the loaded policy rules has been filtered.
 func (p *Adapter) IsFiltered() bool {
 	return p.isFiltered
 }
