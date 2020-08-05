@@ -1,24 +1,13 @@
-language: go
+language: bash
 
-sudo: false
-
-go:
-  - "1.11.13"
-  - "1.12"
-  - "1.13"
-  - "1.14"
-
-before_install:
-#  - go get github.com/mattn/goveralls
-
-before_script:
-  - mysql -e 'CREATE DATABASE IF NOT EXISTS sqlx_adapter_test;'
-  - psql -c 'CREATE DATABASE sqlx_adapter_test;' -U postgres
-
-script:
-  - cd ./tests
-  - go test -v .
+sudo: required
 
 services:
-  - mysql
-  - postgresql
+  - docker
+
+before_install:
+  - docker pull wnameless/oracle-xe-11g-r2
+  - docker run -d wnameless/oracle-xe-11g-r2
+
+script:
+  - docker run --rm -i -e TESTDIR=$(pwd) -v $(pwd):$(pwd) wnameless/oracle-xe-11g-r2 /bin/bash < test.sh
