@@ -104,7 +104,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 
 // genSql  generate sql based on db driver name.
 func (p *Adapter) genSql() {
-	p.sqlCreateTable = fmt.Sprintf(sqlCreatTable, p.tableName, p.tableName, p.tableName)
+	p.sqlCreateTable = fmt.Sprintf(sqlCreateTable, p.tableName, p.tableName, p.tableName)
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
@@ -120,7 +120,7 @@ func (p *Adapter) genSql() {
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgres, p.tableName)
 	case "mysql":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreatTableMysql, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableMysql, p.tableName, p.tableName)
 	case "sqlite3":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)
 		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName, p.tableName, p.tableName, p.tableName)

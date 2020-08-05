@@ -161,7 +161,7 @@ func testSql(t *testing.T, db *sqlx.DB, tableName string) {
 			record.V3 != line.V3 ||
 			record.V4 != line.V4 ||
 			record.V5 != line.V5 {
-			t.Fatal("SelectAll records test not equal")
+			t.Fatalf("SelectAll records test not equal, query record: %+v, need record: %+v", record, line)
 		}
 	}
 
@@ -172,8 +172,6 @@ func testSql(t *testing.T, db *sqlx.DB, tableName string) {
 	i := 3
 	for _, record := range records {
 		line := lines[i]
-		// log.Printf("%+v", record)
-		// log.Printf("%+v", &line)
 		if record.PType != line.PType ||
 			record.V0 != line.V0 ||
 			record.V1 != line.V1 ||
@@ -181,7 +179,7 @@ func testSql(t *testing.T, db *sqlx.DB, tableName string) {
 			record.V3 != line.V3 ||
 			record.V4 != line.V4 ||
 			record.V5 != line.V5 {
-			t.Fatal("SelectWhereIn records test not equal")
+			t.Fatalf("SelectWhereIn records test not equal, query record: %+v, need record: %+v", record, line)
 		}
 		i += 1
 	}
@@ -217,7 +215,7 @@ func testPolicyLine(t *testing.T, db *sqlx.DB, tableName string) {
 		testLine.V3 != line.V3 ||
 		testLine.V4 != line.V4 ||
 		testLine.V5 != line.V5 {
-		t.Fatal("GenPolicyLine test not equal")
+		t.Fatalf("GenPolicyLine records test not equal, query record: %+v, need record: %+v", line, testLine)
 	}
 
 	e, _ := casbin.NewEnforcer(rbacModelFile, rbacPolicyFile)

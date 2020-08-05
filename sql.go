@@ -16,7 +16,7 @@ package sqlxadapter
 
 // general sql
 const (
-	sqlCreatTable = `
+	sqlCreateTable = `
 CREATE TABLE %s(
     p_type varchar(32),
     v0     varchar(255),
@@ -54,7 +54,7 @@ CREATE INDEX IF NOT EXISTS idx_%s_ptype ON %s (p_type, v0, v1);`
 
 // for Mysql
 const (
-	sqlCreatTableMysql = `
+	sqlCreateTableMysql = `
 CREATE TABLE IF NOT EXISTS %s(
     p_type varchar(32)  DEFAULT '' NOT NULL,
     v0     varchar(255) DEFAULT '' NOT NULL,

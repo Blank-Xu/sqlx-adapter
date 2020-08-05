@@ -14,8 +14,8 @@ With this library, Casbin can load policy lines from Sqlx supported databases or
 - Postgres(v9.6): [github.com/lib/pq](https://github.com/lib/pq)
 - SqlServer(v2008R2-SP3): [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
 
-### `oracle` branch(under development)
-- Oracle(v11g): [github.com/mattn/go-oci8](https://github.com/mattn/go-oci8)
+### `oracle` branch
+- Oracle(v11.2): [github.com/mattn/go-oci8](https://github.com/mattn/go-oci8)
 
 
 ## Installation
