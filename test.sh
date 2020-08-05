@@ -27,10 +27,11 @@ export ORACLE_SID=XE
 export LD_LIBRARY_PATH=/u01/app/oracle/product/11.2.0/xe/lib
 
 DOCKER_IP=$(ifconfig eth0 | awk '/inet / { printf $2; exit }')
+PORT="1521"
 
 tnsping ${DOCKER_IP}
 
-sqlplus -L -S "sys/oracle@${DOCKER_IP}:1521 as sysdba" <<SQL
+sqlplus -L -S "sys/oracle@${DOCKER_IP}:${PORT} as sysdba" <<SQL
 CREATE USER scott IDENTIFIED BY tiger DEFAULT TABLESPACE users TEMPORARY TABLESPACE temp;
 GRANT connect, resource, create view, create synonym TO scott;
 GRANT execute ON SYS.DBMS_LOCK TO scott;
@@ -54,15 +55,19 @@ export PATH_SAVE=${PATH}
 
 
 
-echo "testing go-oci8 Go 1.11.x"
+echo "set go env"
 export PATH=/usr/local/go1.11.x/bin:${PATH_SAVE}
 export GOROOT=/usr/local/go1.11.x
 export GOPATH=/usr/local/goFiles1.11.x
 
+echo "prepare required packages"
 go get github.com/mattn/go-oci8
 go get golang.org/x/tools/cmd/cover
 go get github.com/mattn/goveralls
 
-go test -v -covermode=count -coverprofile=coverage.out
+echo "testing sqlx-adapter Go 1.11.x"
+cd ${TESTDIR}/
+go test -v . -covermode=count -coverprofile=coverage.out -args -dataSourceName="scott/tiger@${DOCKER_IP}:${PORT}/xe"
 
+echo "prepare goveralls"
 ${GOPATH}/bin/goveralls -coverprofile=coverage.out -service=travis-ci

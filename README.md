@@ -1,12 +1,14 @@
 # sqlx-adapter
 
 [![Build Status](https://travis-ci.org/Blank-Xu/sqlx-adapter.svg?branch=oracle)](https://travis-ci.org/Blank-Xu/sqlx-adapter)[![Coverage Status](https://coveralls.io/repos/github/Blank-Xu/sqlx-adapter/badge.svg?branch=oracle)](https://coveralls.io/github/Blank-Xu/sqlx-adapter?branch=oracle)
+===
 
 sqlx-adapter is a [Sqlx](https://github.com/jmoiron/sqlx) Adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
+
 With this library, Casbin can load policy lines from Sqlx supported databases or save policy lines.
 
 
-## Tested Database
+## Tested Databases
 ### `master` branch
 - SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
 - Mysql(v5.5): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
@@ -23,13 +25,13 @@ With this library, Casbin can load policy lines from Sqlx supported databases or
     go get github.com/Blank-Xu/sqlx-adapter
 
 
-## Simple Examples(Oracle v11.2)
+## Simple Example
 ```go
 package main
 
 import (
 	"log"
-    "runtime"
+	"runtime"
 	"time"
 
 	sqlxadapter "github.com/Blank-Xu/sqlx-adapter"
@@ -53,11 +55,11 @@ func main() {
 		panic(err)
 	}
 
-    db.SetMaxOpenConns(20)
+	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(time.Minute * 10)
 
-    // need to control by user, not the package
+	// need to control by user, not the package
 	runtime.SetFinalizer(db, finalizer)
 
 	// Initialize a Sqlx adapter and use it in a Casbin enforcer:

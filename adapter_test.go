@@ -15,6 +15,7 @@
 package sqlxadapter
 
 import (
+	"flag"
 	"runtime"
 	"testing"
 
@@ -31,6 +32,8 @@ const (
 )
 
 var (
+	dataSourceName = flag.String("dataSourceName", "system/oracle@127.0.0.1:1521/xe", "dataSourceName")
+
 	lines = []CasbinRule{
 		{PType: "p", V0: "alice", V1: "data1", V2: "read"},
 		{PType: "p", V0: "bob", V1: "data2", V2: "read"},
@@ -62,7 +65,7 @@ func finalizer(db *sqlx.DB) {
 }
 
 func TestAdapters(t *testing.T) {
-	db, err := sqlx.Connect("oci8", "scott/tiger@127.0.0.1:1521/xe")
+	db, err := sqlx.Connect("oci8", *dataSourceName)
 	if err != nil {
 		t.Fatalf("sqlx.Connect failed, err: %v", err)
 	}
