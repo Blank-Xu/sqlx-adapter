@@ -7,7 +7,6 @@ go:
   - "1.12"
   - "1.13"
   - "1.14"
-  - tip
 
 before_install:
   - go get golang.org/x/tools/cmd/cover
@@ -18,7 +17,6 @@ before_script:
   - psql -c 'CREATE DATABASE sqlx_adapter_test;' -U postgres
 
 script:
-  - cd ./tests
   - go test -v -covermode=count -coverprofile=coverage.out
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
 
