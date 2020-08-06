@@ -75,7 +75,7 @@ func TestAdapters(t *testing.T) {
 
 	testTableName(t, db)
 
-	testSql(t, db, "sqlx_sql")
+	testSQL(t, db, "sqlx_sql")
 
 	testPolicyLine(t, db, "sqlx_policy_line")
 
@@ -93,7 +93,7 @@ func testTableName(t *testing.T, db *sqlx.DB) {
 	}
 }
 
-func testSql(t *testing.T, db *sqlx.DB, tableName string) {
+func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	a, err := NewAdapter(db, tableName)
 	if err != nil {
 		t.Fatalf("NewAdapter failed, err: %v", err)
@@ -116,20 +116,16 @@ func testSql(t *testing.T, db *sqlx.DB, tableName string) {
 		t.Fatal("TruncateAndInsertRows test failed, err: ", err)
 	}
 
-	if err = a.deleteAll(); err != nil {
-		t.Fatal("DeleteAll test failed, err: ", err)
-	}
-
-	if err = a.truncateAndInsertRows(lines); err != nil {
-		t.Fatal("TruncateAndInsertRows test failed, err: ", err)
-	}
-
 	if err = a.deleteByArgs(CasbinRule{}); err != nil && err.Error() != "invalid delete args" {
 		t.Fatal("DeleteByArgs test without args failed, err: ", err)
 	}
 
 	if err = a.deleteByArgs(lines[7]); err != nil {
 		t.Fatal("DeleteByArgs test failed, err: ", err)
+	}
+
+	if err = a.deleteAll(); err != nil {
+		t.Fatal("DeleteAll test failed, err: ", err)
 	}
 
 	if err = a.truncateAndInsertRows(lines); err != nil {
@@ -169,7 +165,7 @@ func testSql(t *testing.T, db *sqlx.DB, tableName string) {
 			record.V5 != line.V5 {
 			t.Fatalf("SelectWhereIn records test not equal, query record: %+v, need record: %+v", record, line)
 		}
-		i += 1
+		i++
 	}
 
 	if err = a.truncateTable(); err != nil {

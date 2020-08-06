@@ -28,8 +28,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const DefaultTableName = "casbin_rule"
+// defaultTableName  if tableName == "", the Adapter will use this default table name.
+const defaultTableName = "casbin_rule"
 
+// CasbinRule  defines the casbin rule model.
+// It used for save or load policy lines from sqlx connected database.
 type CasbinRule struct {
 	PType string `db:"P_TYPE"`
 	V0    string `db:"V0"`
@@ -40,6 +43,7 @@ type CasbinRule struct {
 	V5    string `db:"V5"`
 }
 
+// casbinRule  defines to parse records from oracle.
 type casbinRule struct {
 	PType sql.NullString `db:"P_TYPE"`
 	V0    sql.NullString `db:"V0"`
@@ -50,6 +54,8 @@ type casbinRule struct {
 	V5    sql.NullString `db:"V5"`
 }
 
+// Adapter  defines the sqlx adapter for Casbin.
+// It can load policy lines from sqlx connected database or save policy lines.
 type Adapter struct {
 	db        *sqlx.DB
 	tableName string
@@ -68,6 +74,8 @@ type Adapter struct {
 	placeholders [][]byte
 }
 
+// Filter  defines the filtering rules for a FilteredAdapter's policy.
+// Empty values are ignored, but all others must match the filter.
 type Filter struct {
 	PType []string
 	V0    []string
@@ -78,7 +86,7 @@ type Filter struct {
 	V5    []string
 }
 
-// NewAdapter is the constructor for Adapter.
+// NewAdapter  the constructor for Adapter.
 // db should connected to database and controlled by user.
 // If tableName == "", the Adapter will automatically create a table named "casbin_rule".
 func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
@@ -95,11 +103,11 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	switch db.DriverName() {
 	case "oci8", "ora", "goracle":
 	default:
-		return nil, errors.New("")
+		return nil, errors.New("sqlxadapter: this branch just support oracle")
 	}
 
 	if tableName == "" {
-		tableName = DefaultTableName
+		tableName = defaultTableName
 	}
 
 	adapter := Adapter{
@@ -108,7 +116,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	}
 
 	// prepare sql
-	adapter.genSql()
+	adapter.genSQL()
 
 	// prepare placeholders
 	adapter.genPlaceholders()
@@ -122,8 +130,8 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	return &adapter, nil
 }
 
-// genSql  generate sql based on db driver name.
-func (p *Adapter) genSql() {
+// genSQL  generate sql based on db driver name.
+func (p *Adapter) genSQL() {
 	p.tableName = strings.ToUpper(p.tableName)
 
 	p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTable, p.tableName),
@@ -160,8 +168,8 @@ func (p *Adapter) genPlaceholders() {
 	}
 }
 
-// genSqlInsertRow  generate insert sql and args.
-func (p *Adapter) genSqlInsertRow(line CasbinRule) (string, []interface{}) {
+// genSQLInsertRow  generate insert sql and args.
+func (p *Adapter) genSQLInsertRow(line CasbinRule) (string, []interface{}) {
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(32)
@@ -233,7 +241,7 @@ func (p *Adapter) insertRow(line CasbinRule) error {
 	// 	return errors.New("invalid params")
 	// }
 
-	query, args := p.genSqlInsertRow(line)
+	query, args := p.genSQLInsertRow(line)
 	_, err := p.db.Exec(query, args...)
 
 	return err
@@ -316,7 +324,7 @@ func (p *Adapter) truncateAndInsertRows(lines []CasbinRule) error {
 	// }
 
 	for _, line := range lines {
-		query, args := p.genSqlInsertRow(line)
+		query, args := p.genSQLInsertRow(line)
 
 		if _, err = tx.Exec(query, args...); err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
@@ -371,56 +379,54 @@ func (p *Adapter) selectRows(query string, args ...interface{}) ([]CasbinRule, e
 func (p *Adapter) selectWhereIn(filter Filter) ([]CasbinRule, error) {
 	var sqlBuf bytes.Buffer
 
+	checkAndFunc := func() {
+		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
+			sqlBuf.WriteString(" AND ")
+		}
+	}
+
 	sqlBuf.Grow(32)
 	sqlBuf.WriteString(p.sqlSelectWhere)
 
 	params := make([]interface{}, 0, 4)
 	if len(filter.PType) > 0 {
-		// if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-		// 	sqlBuf.WriteString(" AND ")
-		// }
+		// checkAndFunc()
 		sqlBuf.WriteString("P_TYPE IN (?)")
 		params = append(params, filter.PType)
 	}
 	if len(filter.V0) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("V0 IN (?)")
 		params = append(params, filter.V0)
 	}
 	if len(filter.V1) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("V1 IN (?)")
 		params = append(params, filter.V1)
 	}
 	if len(filter.V2) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("V2 IN (?)")
 		params = append(params, filter.V2)
 	}
 	if len(filter.V3) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("V3 IN (?)")
 		params = append(params, filter.V3)
 	}
 	if len(filter.V4) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("V4 IN (?)")
 		params = append(params, filter.V4)
 	}
 	if len(filter.V5) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("V5 IN (?)")
 		params = append(params, filter.V5)
 	}
@@ -539,6 +545,7 @@ func (p *Adapter) IsFiltered() bool {
 	return p.isFiltered
 }
 
+// loadPolicyLine  load a policy line to model.
 func (Adapter) loadPolicyLine(line CasbinRule, model model.Model) {
 	var lineBuf bytes.Buffer
 
@@ -573,6 +580,7 @@ func (Adapter) loadPolicyLine(line CasbinRule, model model.Model) {
 	persist.LoadPolicyLine(lineBuf.String(), model)
 }
 
+// genPolicyLine  generate CasbinRule model from give params.
 func (Adapter) genPolicyLine(ptype string, rule []string) CasbinRule {
 	line := CasbinRule{
 		PType: ptype,
