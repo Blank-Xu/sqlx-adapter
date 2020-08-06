@@ -24,8 +24,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const DefaultTableName = "casbin_rule"
+// defaultTableName  if tableName == "", the Adapter will use this default table name.
+const defaultTableName = "casbin_rule"
 
+// CasbinRule  defines the casbin rule model.
+// It used for save or load policy lines from sqlx connected database.
 type CasbinRule struct {
 	PType string `db:"p_type"`
 	V0    string `db:"v0"`
@@ -36,6 +39,8 @@ type CasbinRule struct {
 	V5    string `db:"v5"`
 }
 
+// Adapter  defines the sqlx adapter for Casbin.
+// It can load policy lines from sqlx connected database or save policy lines.
 type Adapter struct {
 	db        *sqlx.DB
 	tableName string
@@ -52,6 +57,8 @@ type Adapter struct {
 	sqlSelectWhere   string
 }
 
+// Filter  defines the filtering rules for a FilteredAdapter's policy.
+// Empty values are ignored, but all others must match the filter.
 type Filter struct {
 	PType []string
 	V0    []string
@@ -62,7 +69,7 @@ type Filter struct {
 	V5    []string
 }
 
-// NewAdapter is the constructor for Adapter.
+// NewAdapter  the constructor for Adapter.
 // db should connected to database and controlled by user.
 // If tableName == "", the Adapter will automatically create a table named "casbin_rule".
 func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
@@ -82,7 +89,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	}
 
 	if tableName == "" {
-		tableName = DefaultTableName
+		tableName = defaultTableName
 	}
 
 	adapter := Adapter{
@@ -91,7 +98,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	}
 
 	// prepare different database sql
-	adapter.genSql()
+	adapter.genSQL()
 
 	if !adapter.isTableExist() {
 		if err = adapter.createTable(); err != nil {
@@ -102,8 +109,8 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	return &adapter, nil
 }
 
-// genSql  generate sql based on db driver name.
-func (p *Adapter) genSql() {
+// genSQL  generate sql based on db driver name.
+func (p *Adapter) genSQL() {
 	p.sqlCreateTable = fmt.Sprintf(sqlCreateTable, p.tableName, p.tableName, p.tableName)
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
@@ -287,56 +294,55 @@ func (p *Adapter) selectAll() ([]*CasbinRule, error) {
 func (p *Adapter) selectWhereIn(filter Filter) (lines []*CasbinRule, err error) {
 	var sqlBuf bytes.Buffer
 
+	checkAndFunc := func() {
+		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
+			sqlBuf.WriteString(" AND ")
+		}
+	}
+
 	sqlBuf.Grow(32)
 	sqlBuf.WriteString(p.sqlSelectWhere)
 
 	params := make([]interface{}, 0, 4)
 	if len(filter.PType) > 0 {
-		// if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-		// 	sqlBuf.WriteString(" AND ")
-		// }
+		checkAndFunc()
+
 		sqlBuf.WriteString("p_type IN (?)")
 		params = append(params, filter.PType)
 	}
 	if len(filter.V0) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("v0 IN (?)")
 		params = append(params, filter.V0)
 	}
 	if len(filter.V1) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("v1 IN (?)")
 		params = append(params, filter.V1)
 	}
 	if len(filter.V2) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("v2 IN (?)")
 		params = append(params, filter.V2)
 	}
 	if len(filter.V3) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("v3 IN (?)")
 		params = append(params, filter.V3)
 	}
 	if len(filter.V4) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("v4 IN (?)")
 		params = append(params, filter.V4)
 	}
 	if len(filter.V5) > 0 {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
-			sqlBuf.WriteString(" AND ")
-		}
+		checkAndFunc()
+
 		sqlBuf.WriteString("v5 IN (?)")
 		params = append(params, filter.V5)
 	}
@@ -463,6 +469,7 @@ func (p *Adapter) IsFiltered() bool {
 	return p.isFiltered
 }
 
+// loadPolicyLine  load a policy line to model.
 func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
 	var lineBuf bytes.Buffer
 
@@ -497,6 +504,7 @@ func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
 	persist.LoadPolicyLine(lineBuf.String(), model)
 }
 
+// genPolicyLine  generate CasbinRule model from give params.
 func (Adapter) genPolicyLine(ptype string, rule []string) CasbinRule {
 	line := CasbinRule{
 		PType: ptype,
