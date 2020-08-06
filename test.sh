@@ -69,5 +69,5 @@ echo "testing sqlx-adapter Go 1.11.x"
 cd ${TESTDIR}/
 go test -v . -covermode=count -coverprofile=coverage.out -args -dataSourceName="scott/tiger@${DOCKER_IP}:${PORT}/xe"
 
-echo "prepare goveralls"
-${GOPATH}/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+echo "goveralls return 422"
+#${GOPATH}/bin/goveralls -coverprofile=coverage.out -service=travis-ci
