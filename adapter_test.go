@@ -15,8 +15,7 @@
 package sqlxadapter
 
 import (
-	"log"
-	"runtime"
+	"reflect"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
@@ -65,36 +64,34 @@ var (
 	}
 )
 
-func finalizer(db *sqlx.DB) {
-	err := db.Close()
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestAdapters(t *testing.T) {
 	for key, value := range dataSourceNames {
-		log.Printf("test [%s] start, dataSourceName: [%s]", key, value)
+		t.Logf("-------------------- test [%s] start, dataSourceName: [%s]", key, value)
 
 		db, err := sqlx.Connect(key, value)
 		if err != nil {
 			t.Fatalf("sqlx.Connect failed, err: %v", err)
 		}
 
-		// need to control by user, not the package
-		runtime.SetFinalizer(db, finalizer)
-
+		t.Log("---------- testTableName start")
 		testTableName(t, db)
+		t.Log("---------- testTableName finished")
 
+		t.Log("---------- testSQL start")
 		testSQL(t, db, "sqlxadapter_sql")
+		t.Log("---------- testSQL finished")
 
-		testPolicyLine(t, db, "sqlxadapter_policy_line")
-
+		t.Log("---------- testSaveLoad start")
 		testSaveLoad(t, db, "sqlxadapter_save_load")
+		t.Log("---------- testSaveLoad finished")
 
+		t.Log("---------- testAutoSave start")
 		testAutoSave(t, db, "sqlxadapter_auto_save")
+		t.Log("---------- testAutoSave finished")
 
+		t.Log("---------- testFilteredPolicy start")
 		testFilteredPolicy(t, db, "sqlxadapter_filtered_policy")
+		t.Log("---------- testFilteredPolicy finished")
 	}
 }
 
@@ -106,116 +103,63 @@ func testTableName(t *testing.T, db *sqlx.DB) {
 }
 
 func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
-	a, err := NewAdapter(db, tableName)
-	if err != nil {
-		t.Fatalf("NewAdapter failed, err: %v", err)
-	}
-
-	// CreateTable test has passed when adapter create
-	// if err = a.CreateTable(); err != nil {
-	// 	t.Fatal("CreateTable failed, err: ", err)
-	// }
-
-	if b := a.isTableExist(); b == false {
-		t.Fatal("IsTableExist test failed")
-	}
-
-	if err = a.insertRow(lines[0]); err != nil {
-		t.Fatal("InsertRow test failed, err: ", err)
-	}
-
-	if err = a.truncateAndInsertRows(lines); err != nil {
-		t.Fatal("TruncateAndInsertRows test failed, err: ", err)
-	}
-
-	if err = a.deleteByArgs(CasbinRule{}); err != nil && err.Error() != "invalid delete args" {
-		t.Fatal("DeleteByArgs test without args failed, err: ", err)
-	}
-
-	if err = a.deleteByArgs(lines[8]); err != nil {
-		t.Fatal("DeleteByArgs test failed, err: ", err)
-	}
-
-	if err = a.deleteAll(); err != nil {
-		t.Fatal("DeleteAll test failed, err: ", err)
-	}
-
-	if err = a.truncateAndInsertRows(lines); err != nil {
-		t.Fatal("TruncateAndInsertRows test failed, err: ", err)
-	}
-
-	records, err := a.selectAll()
-	if err != nil {
-		t.Fatal("SelectAll test failed, err: ", err)
-	}
-	for idx, record := range records {
-		line := lines[idx]
-		if record.PType != line.PType ||
-			record.V0 != line.V0 ||
-			record.V1 != line.V1 ||
-			record.V2 != line.V2 ||
-			record.V3 != line.V3 ||
-			record.V4 != line.V4 ||
-			record.V5 != line.V5 {
-			t.Fatalf("SelectAll records test not equal, query record: %+v, need record: %+v", record, line)
+	var err error
+	logSQLErr := func(action string) {
+		if err != nil {
+			t.Fatalf("%s test failed, err: %v", action, err)
 		}
 	}
 
-	records, err = a.selectWhereIn(filter)
-	if err != nil {
-		t.Fatal("SelectWhereIn test failed, err: ", err)
+	var a *Adapter
+	a, err = NewAdapter(db, tableName)
+	logSQLErr("NewAdapter")
+
+	// createTable test has passed when adapter create
+	// logSQLErr("createTable",  a.createTable())
+
+	if b := a.isTableExist(); b == false {
+		t.Fatal("isTableExist test failed")
 	}
+
+	rules := make([][]interface{}, len(lines))
+	for idx, rule := range lines {
+		args := a.genArgs(rule.PType, []string{rule.V0, rule.V1, rule.V2, rule.V3, rule.V4, rule.V5})
+		rules[idx] = args
+	}
+
+	err = a.truncateAndInsertRows(rules)
+	logSQLErr("truncateAndInsertRows")
+
+	err = a.deleteRows(a.sqlDeleteByArgs, "g")
+	logSQLErr("deleteRows sqlDeleteByArgs g")
+
+	err = a.deleteRows(a.sqlDeleteAll)
+	logSQLErr("deleteRows sqlDeleteAll")
+
+	_ = a.truncateAndInsertRows(rules)
+
+	records, err := a.selectRows(a.sqlSelectAll)
+	logSQLErr("selectRows sqlSelectAll")
+	for idx, record := range records {
+		line := lines[idx]
+		if !reflect.DeepEqual(record, &line) {
+			t.Fatalf("selectRows records test not equal, query record: %+v, need record: %+v", record, line)
+		}
+	}
+
+	records, err = a.selectWhereIn(&filter)
+	logSQLErr("selectWhereIn")
 	i := 3
 	for _, record := range records {
 		line := lines[i]
-		if record.PType != line.PType ||
-			record.V0 != line.V0 ||
-			record.V1 != line.V1 ||
-			record.V2 != line.V2 ||
-			record.V3 != line.V3 ||
-			record.V4 != line.V4 ||
-			record.V5 != line.V5 {
-			t.Fatalf("SelectWhereIn records test not equal, query record: %+v, need record: %+v", record, line)
+		if !reflect.DeepEqual(record, &line) {
+			t.Fatalf("selectWhereIn records test not equal, query record: %+v, need record: %+v", record, line)
 		}
 		i++
 	}
 
-	if err = a.truncateTable(); err != nil {
-		t.Fatal("TruncateTable test failed, err: ", err)
-	}
-}
-
-func testPolicyLine(t *testing.T, db *sqlx.DB, tableName string) {
-	a, err := NewAdapter(db, tableName)
-	if err != nil {
-		t.Fatalf("NewAdapter failed, err: %v", err)
-	}
-
-	testLine := CasbinRule{
-		PType: "p",
-		V0:    "test0",
-		V1:    "test1",
-		V2:    "test2",
-		V3:    "test3",
-		V4:    "test4",
-		V5:    "test5",
-	}
-	rule := []string{"test0", "test1", "test2", "test3", "test4", "test5"}
-
-	line := a.genPolicyLine("p", rule)
-
-	if testLine.PType != line.PType ||
-		testLine.V0 != line.V0 ||
-		testLine.V1 != line.V1 ||
-		testLine.V2 != line.V2 ||
-		testLine.V3 != line.V3 ||
-		testLine.V4 != line.V4 ||
-		testLine.V5 != line.V5 {
-		t.Fatalf("GenPolicyLine records test not equal, query record: %+v, need record: %+v", line, testLine)
-	}
-
-	e, _ := casbin.NewEnforcer(rbacModelFile, rbacPolicyFile)
-	a.loadPolicyLine(&line, e.GetModel())
+	err = a.truncateTable()
+	logSQLErr("truncateTable")
 }
 
 func initPolicy(t *testing.T, db *sqlx.DB, tableName string) {
@@ -278,11 +222,20 @@ func testAutoSave(t *testing.T, db *sqlx.DB, tableName string) {
 	// Now we disable it.
 	e.EnableAutoSave(false)
 
+	var err error
+	logErr := func(action string) {
+		if err != nil {
+			t.Fatalf("%s test failed, err: %v", action, err)
+		}
+	}
+
 	// Because AutoSave is disabled, the policy change only affects the policy in Casbin enforcer,
 	// it doesn't affect the policy in the storage.
-	e.AddPolicy("alice", "data1", "write")
+	_, err = e.AddPolicy("alice", "data1", "write")
+	logErr("AddPolicy1")
 	// Reload the policy from the storage to see the effect.
-	e.LoadPolicy()
+	err = e.LoadPolicy()
+	logErr("LoadPolicy1")
 	// This is still the original policy.
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 
@@ -291,21 +244,27 @@ func testAutoSave(t *testing.T, db *sqlx.DB, tableName string) {
 
 	// Because AutoSave is enabled, the policy change not only affects the policy in Casbin enforcer,
 	// but also affects the policy in the storage.
-	e.AddPolicy("alice", "data1", "write")
+	_, err = e.AddPolicy("alice", "data1", "write")
+	logErr("AddPolicy2")
 	// Reload the policy from the storage to see the effect.
-	e.LoadPolicy()
+	err = e.LoadPolicy()
+	logErr("LoadPolicy2")
 	// The policy has a new rule: {"alice", "data1", "write"}.
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data1", "write"}})
 
 	// Remove the added rule.
-	e.RemovePolicy("alice", "data1", "write")
-	e.LoadPolicy()
+	_, err = e.RemovePolicy("alice", "data1", "write")
+	logErr("RemovePolicy")
+	err = e.LoadPolicy()
+	logErr("LoadPolicy3")
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 
 	// Remove "data2_admin" related policy rules via a filter.
 	// Two rules: {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"} are deleted.
-	e.RemoveFilteredPolicy(0, "data2_admin")
-	e.LoadPolicy()
+	_, err = e.RemoveFilteredPolicy(0, "data2_admin")
+	logErr("RemoveFilteredPolicy")
+	err = e.LoadPolicy()
+	logErr("LoadPolicy4")
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 }
 
@@ -323,24 +282,38 @@ func testFilteredPolicy(t *testing.T, db *sqlx.DB, tableName string) {
 	// Now set the adapter
 	e.SetAdapter(a)
 
+	var err error
+	logErr := func(action string) {
+		if err != nil {
+			t.Fatalf("%s test failed, err: %v", action, err)
+		}
+	}
+
 	// Load only alice's policies
-	e.LoadFilteredPolicy(Filter{V0: []string{"alice"}})
+	err = e.LoadFilteredPolicy(&Filter{V0: []string{"alice"}})
+	logErr("LoadFilteredPolicy alice")
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}})
 
 	// Load only bob's policies
-	e.LoadFilteredPolicy(Filter{V0: []string{"bob"}})
+	err = e.LoadFilteredPolicy(&Filter{V0: []string{"bob"}})
+	logErr("LoadFilteredPolicy bob")
 	testGetPolicy(t, e, [][]string{{"bob", "data2", "write"}})
 
 	// Load policies for data2_admin
-	e.LoadFilteredPolicy(Filter{V0: []string{"data2_admin"}})
+	err = e.LoadFilteredPolicy(&Filter{V0: []string{"data2_admin"}})
+	logErr("LoadFilteredPolicy data2_admin")
 	testGetPolicy(t, e, [][]string{{"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 
 	// Load policies for alice and bob
-	e.LoadFilteredPolicy(Filter{V0: []string{"alice", "bob"}})
+	err = e.LoadFilteredPolicy(&Filter{V0: []string{"alice", "bob"}})
+	logErr("LoadFilteredPolicy alice bob")
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 
-	e.AddPolicy("bob", "data1", "write", "test1", "test2", "test3")
-	e.LoadFilteredPolicy(filter)
+	_, err = e.AddPolicy("bob", "data1", "write", "test1", "test2", "test3")
+	logErr("AddPolicy")
+
+	err = e.LoadFilteredPolicy(&filter)
+	logErr("LoadFilteredPolicy filter")
 	testGetPolicy(t, e, [][]string{{"bob", "data1", "write", "test1", "test2", "test3"}})
 }
 
