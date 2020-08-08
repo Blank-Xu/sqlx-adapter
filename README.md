@@ -19,7 +19,13 @@ With this library, Casbin can load policy lines from Sqlx supported databases or
 
 ## Installation
 
-    go get github.com/Blank-Xu/sqlx-adapter
+Install oracle client followed like link:
+
+    https://github.com/mattn/go-oci8
+
+Go get with Go version 1.9 or higher
+
+    go get github.com/Blank-Xu/sqlx-adapter@oracle
 
 
 ## Simple Example

@@ -29,7 +29,7 @@ import (
 )
 
 // defaultTableName  if tableName == "", the Adapter will use this default table name.
-const defaultTableName = "casbin_rule"
+const defaultTableName = "CASBIN_RULE"
 
 // CasbinRule  defines the casbin rule model.
 // It used for save or load policy lines from sqlx connected database.
@@ -71,6 +71,7 @@ type Adapter struct {
 	sqlSelectAll     string
 	sqlSelectWhere   string
 
+	cols         [][]byte
 	placeholders [][]byte
 }
 
@@ -115,11 +116,11 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		tableName: tableName,
 	}
 
-	// prepare sql
+	// generate sql
 	adapter.genSQL()
 
-	// prepare placeholders
-	adapter.genPlaceholders()
+	// generate sql params
+	adapter.genParams()
 
 	if !adapter.isTableExist() {
 		if err = adapter.createTable(); err != nil {
@@ -147,67 +148,35 @@ func (p *Adapter) genSQL() {
 	p.sqlSelectWhere = fmt.Sprintf(sqlSelectWhere, p.tableName)
 }
 
-// genPlaceholders  generate all placeholders by db driver name.
-func (p *Adapter) genPlaceholders() {
+// genParams  generate all cols and placeholders by db driver name.
+func (p *Adapter) genParams() {
 	var line CasbinRule
-	// get the CasbinRule field size
-	l := reflect.TypeOf(line).NumField()
 
-	var phBuf bytes.Buffer
+	t := reflect.TypeOf(line)
+	l := t.NumField()
 
+	var (
+		colBuf bytes.Buffer
+		phBuf  bytes.Buffer
+	)
+
+	colBuf.Grow(16)
 	phBuf.Grow(16)
 
+	p.cols = make([][]byte, l)
 	p.placeholders = make([][]byte, l)
-	for idx := range p.placeholders {
+
+	for i := 0; i < l; i++ {
+		tag := t.Field(i).Tag.Get("db")
+		colBuf.WriteString(tag)
+		p.cols[i] = []byte("(" + colBuf.String() + ")")
+		colBuf.WriteByte(',')
+
 		phBuf.WriteString(":arg")
-		phBuf.WriteString(strconv.Itoa(idx + 1))
-
-		p.placeholders[idx] = []byte("(" + phBuf.String() + ")")
-
+		phBuf.WriteString(strconv.Itoa(i + 1))
+		p.placeholders[i] = []byte("(" + phBuf.String() + ")")
 		phBuf.WriteByte(',')
 	}
-}
-
-// genSQLInsertRow  generate insert sql and args.
-func (p *Adapter) genSQLInsertRow(line CasbinRule) (string, []interface{}) {
-	var sqlBuf bytes.Buffer
-
-	sqlBuf.Grow(32)
-	sqlBuf.WriteString(p.sqlInsertRow)
-	sqlBuf.WriteString("(P_TYPE")
-
-	args := make([]interface{}, 0, 4)
-	args = append(args, line.PType)
-
-	if line.V0 != "" {
-		sqlBuf.WriteString(",V0")
-		args = append(args, line.V0)
-	}
-	if line.V1 != "" {
-		sqlBuf.WriteString(",V1")
-		args = append(args, line.V1)
-	}
-	if line.V2 != "" {
-		sqlBuf.WriteString(",V2")
-		args = append(args, line.V2)
-	}
-	if line.V3 != "" {
-		sqlBuf.WriteString(",V3")
-		args = append(args, line.V3)
-	}
-	if line.V4 != "" {
-		sqlBuf.WriteString(",V4")
-		args = append(args, line.V4)
-	}
-	if line.V5 != "" {
-		sqlBuf.WriteString(",V5")
-		args = append(args, line.V5)
-	}
-
-	sqlBuf.WriteString(") VALUES ")
-	sqlBuf.Write(p.placeholders[len(args)-1])
-
-	return sqlBuf.String(), args
 }
 
 // createTable  create a not exists table.
@@ -235,113 +204,66 @@ func (p *Adapter) isTableExist() bool {
 	return err == nil
 }
 
-// insertRow  insert one row to table.
-func (p *Adapter) insertRow(line CasbinRule) error {
-	// if line.PType == "" {
-	// 	return errors.New("invalid params")
-	// }
-
-	query, args := p.genSQLInsertRow(line)
+// deleteRows  delete eligible data.
+func (p *Adapter) deleteRows(query string, args ...interface{}) error {
 	_, err := p.db.Exec(query, args...)
 
 	return err
 }
 
-// deleteAll  clear the table.
-func (p *Adapter) deleteAll() error {
-	_, err := p.db.Exec(p.sqlDeleteAll)
-
-	return err
-}
-
-// deleteByArgs  delete eligible data.
-func (p *Adapter) deleteByArgs(line CasbinRule) error {
-	if line.PType == "" {
-		return errors.New("invalid delete args")
-	}
-
-	var sqlBuf bytes.Buffer
-
-	sqlBuf.Grow(32)
-	sqlBuf.WriteString(p.sqlDeleteByArgs)
-
-	args := make([]interface{}, 0, 4)
-	args = append(args, line.PType)
-
-	if line.V0 != "" {
-		args = append(args, line.V0)
-		sqlBuf.WriteString(" AND V0 = :arg")
-		sqlBuf.WriteString(strconv.Itoa(len(args)))
-	}
-	if line.V1 != "" {
-		args = append(args, line.V1)
-		sqlBuf.WriteString(" AND V1 = :arg")
-		sqlBuf.WriteString(strconv.Itoa(len(args)))
-	}
-	if line.V2 != "" {
-		args = append(args, line.V2)
-		sqlBuf.WriteString(" AND V2 = :arg")
-		sqlBuf.WriteString(strconv.Itoa(len(args)))
-	}
-	if line.V3 != "" {
-		args = append(args, line.V3)
-		sqlBuf.WriteString(" AND V3 = :arg")
-		sqlBuf.WriteString(strconv.Itoa(len(args)))
-	}
-	if line.V4 != "" {
-		args = append(args, line.V4)
-		sqlBuf.WriteString(" AND V4 = :arg")
-		sqlBuf.WriteString(strconv.Itoa(len(args)))
-	}
-	if line.V5 != "" {
-		args = append(args, line.V5)
-		sqlBuf.WriteString(" AND V5 = :arg")
-		sqlBuf.WriteString(strconv.Itoa(len(args)))
-	}
-
-	_, err := p.db.Exec(sqlBuf.String(), args...)
-
-	return err
-}
-
 // truncateAndInsertRows  clear table and insert new rows.
-func (p *Adapter) truncateAndInsertRows(lines []CasbinRule) error {
-	err := p.truncateTable()
-	if err != nil {
-		return err
+func (p *Adapter) truncateAndInsertRows(args [][]interface{}) (err error) {
+	if err = p.truncateTable(); err != nil {
+		return
 	}
 
 	tx, err := p.db.Beginx()
 	if err != nil {
-		return err
+		return
 	}
 
+	var action string
 	// if _, err = tx.Exec(p.sqlDeleteAll); err != nil {
-	// 	if err1 := tx.Rollback(); err1 != nil {
-	// 		err = fmt.Errorf("delete err: %v, rollback err: %v", err, err1)
-	// 	}
-	// 	return err
+	// 	action = "delete all"
+	// 	goto ROLLBACK
 	// }
 
-	for _, line := range lines {
-		query, args := p.genSQLInsertRow(line)
+	var sqlBuf bytes.Buffer
 
-		if _, err = tx.Exec(query, args...); err != nil {
-			if err1 := tx.Rollback(); err1 != nil {
-				err = fmt.Errorf("exec err: %v, rollback err: %v", err, err1)
-			}
+	sqlBuf.Grow(64)
 
-			return err
+	for _, arg := range args {
+		l := len(arg)
+		if l == 0 {
+			continue
+		}
+
+		sqlBuf.Reset()
+		sqlBuf.WriteString(p.sqlInsertRow)
+		sqlBuf.Write(p.cols[l-1])
+		sqlBuf.WriteString(" VALUES ")
+		sqlBuf.Write(p.placeholders[l-1])
+
+		if _, err = tx.Exec(sqlBuf.String(), arg...); err != nil {
+			action = "exec"
+			goto ROLLBACK
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		if err1 := tx.Rollback(); err1 != nil {
-			err = fmt.Errorf("commit err: %v, rollback err: %v", err, err1)
-		}
+		action = "commit"
+		goto ROLLBACK
 	}
 
-	return err
+	return
+
+ROLLBACK:
+
+	if err1 := tx.Rollback(); err1 != nil {
+		err = fmt.Errorf("%s err: %v, rollback err: %v", action, err, err1)
+	}
+
+	return
 }
 
 // selectRows  select all data from the table.
@@ -375,65 +297,62 @@ func (p *Adapter) selectRows(query string, args ...interface{}) ([]CasbinRule, e
 	return lines, nil
 }
 
-// selectWhereIn  select for eligible data from the table.
-func (p *Adapter) selectWhereIn(filter Filter) ([]CasbinRule, error) {
+// selectWhereIn  select eligible data by filter from the table.
+func (p *Adapter) selectWhereIn(filter *Filter) (lines []CasbinRule, err error) {
 	var sqlBuf bytes.Buffer
 
-	checkAndFunc := func() {
-		if sqlBuf.Bytes()[sqlBuf.Len()-1] == ')' {
+	sqlBuf.Grow(64)
+	sqlBuf.WriteString(p.sqlSelectWhere)
+
+	args := make([]interface{}, 0, 4)
+
+	hasInCond := false
+
+	for _, col := range [7]struct {
+		name string
+		arg  []string
+	}{
+		{"P_TYPE", filter.PType},
+		{"V0", filter.V0},
+		{"V1", filter.V1},
+		{"V2", filter.V2},
+		{"V3", filter.V3},
+		{"V4", filter.V4},
+		{"V5", filter.V5},
+	} {
+		l := len(col.arg)
+		if l == 0 {
+			continue
+		}
+
+		switch sqlBuf.Bytes()[sqlBuf.Len()-1] {
+		case '?', ')':
 			sqlBuf.WriteString(" AND ")
+		}
+
+		sqlBuf.WriteString(col.name)
+
+		if l == 1 {
+			sqlBuf.WriteString(" = ?")
+			args = append(args, col.arg[0])
+		} else {
+			sqlBuf.WriteString(" IN (?)")
+			args = append(args, col.arg)
+
+			hasInCond = true
 		}
 	}
 
-	sqlBuf.Grow(32)
-	sqlBuf.WriteString(p.sqlSelectWhere)
+	var query string
 
-	params := make([]interface{}, 0, 4)
-	if len(filter.PType) > 0 {
-		// checkAndFunc()
-		sqlBuf.WriteString("P_TYPE IN (?)")
-		params = append(params, filter.PType)
-	}
-	if len(filter.V0) > 0 {
-		checkAndFunc()
+	if hasInCond {
+		query, args, err = sqlx.In(sqlBuf.String(), args...)
+		if err != nil {
+			return
+		}
 
-		sqlBuf.WriteString("V0 IN (?)")
-		params = append(params, filter.V0)
-	}
-	if len(filter.V1) > 0 {
-		checkAndFunc()
-
-		sqlBuf.WriteString("V1 IN (?)")
-		params = append(params, filter.V1)
-	}
-	if len(filter.V2) > 0 {
-		checkAndFunc()
-
-		sqlBuf.WriteString("V2 IN (?)")
-		params = append(params, filter.V2)
-	}
-	if len(filter.V3) > 0 {
-		checkAndFunc()
-
-		sqlBuf.WriteString("V3 IN (?)")
-		params = append(params, filter.V3)
-	}
-	if len(filter.V4) > 0 {
-		checkAndFunc()
-
-		sqlBuf.WriteString("V4 IN (?)")
-		params = append(params, filter.V4)
-	}
-	if len(filter.V5) > 0 {
-		checkAndFunc()
-
-		sqlBuf.WriteString("V5 IN (?)")
-		params = append(params, filter.V5)
-	}
-
-	query, args, err := sqlx.In(sqlBuf.String(), params...)
-	if err != nil {
-		return nil, err
+	} else {
+		query = sqlBuf.String()
 	}
 
 	query = p.db.Rebind(query)
@@ -457,76 +376,112 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 
 // SavePolicy  save policy rules to the storage.
 func (p *Adapter) SavePolicy(model model.Model) error {
-	lines := make([]CasbinRule, 0, 32)
+	args := make([][]interface{}, 0, 32)
 
 	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {
-			line := p.genPolicyLine(ptype, rule)
-			lines = append(lines, line)
+			arg := p.genArgs(ptype, rule)
+			args = append(args, arg)
 		}
 	}
 
 	for ptype, ast := range model["g"] {
 		for _, rule := range ast.Policy {
-			line := p.genPolicyLine(ptype, rule)
-			lines = append(lines, line)
+			arg := p.genArgs(ptype, rule)
+			args = append(args, arg)
 		}
 	}
 
-	return p.truncateAndInsertRows(lines)
+	return p.truncateAndInsertRows(args)
 }
 
 // AddPolicy  add one policy rule to the storage.
 func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
-	line := p.genPolicyLine(ptype, rule)
+	args := p.genArgs(ptype, rule)
+	idx := len(args) - 1
 
-	return p.insertRow(line)
+	var sqlBuf bytes.Buffer
+
+	sqlBuf.Grow(64)
+	sqlBuf.WriteString(p.sqlInsertRow)
+	sqlBuf.Write(p.cols[idx])
+	sqlBuf.WriteString(" VALUES ")
+	sqlBuf.Write(p.placeholders[idx])
+
+	_, err := p.db.Exec(sqlBuf.String(), args...)
+
+	return err
 }
 
 // RemovePolicy  remove policy rules from the storage.
 func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
-	line := p.genPolicyLine(ptype, rule)
+	var sqlBuf bytes.Buffer
 
-	return p.deleteByArgs(line)
+	sqlBuf.Grow(64)
+	sqlBuf.WriteString(p.sqlDeleteByArgs)
+
+	args := make([]interface{}, 0, len(rule)+1)
+	args = append(args, ptype)
+
+	for idx, arg := range rule {
+		if arg != "" {
+			sqlBuf.WriteString(" AND V")
+			sqlBuf.WriteString(strconv.Itoa(idx))
+			sqlBuf.WriteString(" = :arg")
+			sqlBuf.WriteString(strconv.Itoa(idx + 2))
+
+			args = append(args, arg)
+		}
+	}
+
+	return p.deleteRows(sqlBuf.String(), args...)
 }
 
 // RemoveFilteredPolicy  remove policy rules that match the filter from the storage.
 func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
-	line := CasbinRule{
-		PType: ptype,
-	}
+	var sqlBuf bytes.Buffer
+
+	sqlBuf.Grow(64)
+	sqlBuf.WriteString(p.sqlDeleteByArgs)
+
+	args := make([]interface{}, 0, 4)
+	args = append(args, ptype)
+
+	var value string
 
 	l := fieldIndex + len(fieldValues)
-	if fieldIndex <= 0 && 0 < l {
-		line.V0 = fieldValues[0-fieldIndex]
-	}
-	if fieldIndex <= 1 && 1 < l {
-		line.V1 = fieldValues[1-fieldIndex]
-	}
-	if fieldIndex <= 2 && 2 < l {
-		line.V2 = fieldValues[2-fieldIndex]
-	}
-	if fieldIndex <= 3 && 3 < l {
-		line.V3 = fieldValues[3-fieldIndex]
-	}
-	if fieldIndex <= 4 && 4 < l {
-		line.V4 = fieldValues[4-fieldIndex]
-	}
-	if fieldIndex <= 5 && 5 < l {
-		line.V5 = fieldValues[5-fieldIndex]
+
+	for idx := 0; idx < 6; idx++ {
+		if fieldIndex <= idx && idx < l {
+			value = fieldValues[idx-fieldIndex]
+
+			if value != "" {
+				sqlBuf.WriteString(" AND V")
+				sqlBuf.WriteString(strconv.Itoa(idx))
+				sqlBuf.WriteString(" = :arg")
+				sqlBuf.WriteString(strconv.Itoa(idx + 2))
+
+				args = append(args, value)
+			}
+		}
 	}
 
-	return p.deleteByArgs(line)
+	return p.deleteRows(sqlBuf.String(), args...)
 }
 
 // LoadFilteredPolicy  load policy rules that match the filter.
-func (p *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) error {
-	filterValue, ok := filter.(Filter)
+// filterPtr must be a pointer.
+func (p *Adapter) LoadFilteredPolicy(model model.Model, filterPtr interface{}) error {
+	if filterPtr == nil {
+		return p.LoadPolicy(model)
+	}
+
+	filter, ok := filterPtr.(*Filter)
 	if !ok {
 		return errors.New("invalid filter type")
 	}
 
-	lines, err := p.selectWhereIn(filterValue)
+	lines, err := p.selectWhereIn(filter)
 	if err != nil {
 		return err
 	}
@@ -549,62 +504,29 @@ func (p *Adapter) IsFiltered() bool {
 func (Adapter) loadPolicyLine(line CasbinRule, model model.Model) {
 	var lineBuf bytes.Buffer
 
-	lineBuf.Grow(32)
+	lineBuf.Grow(64)
 	lineBuf.WriteString(line.PType)
 
-	if line.V0 != "" {
-		lineBuf.WriteByte(',')
-		lineBuf.WriteString(line.V0)
-	}
-	if line.V1 != "" {
-		lineBuf.WriteByte(',')
-		lineBuf.WriteString(line.V1)
-	}
-	if line.V2 != "" {
-		lineBuf.WriteByte(',')
-		lineBuf.WriteString(line.V2)
-	}
-	if line.V3 != "" {
-		lineBuf.WriteByte(',')
-		lineBuf.WriteString(line.V3)
-	}
-	if line.V4 != "" {
-		lineBuf.WriteByte(',')
-		lineBuf.WriteString(line.V4)
-	}
-	if line.V5 != "" {
-		lineBuf.WriteByte(',')
-		lineBuf.WriteString(line.V5)
+	args := [6]string{line.V0, line.V1, line.V2, line.V3, line.V4, line.V5}
+	for _, arg := range args {
+		if arg != "" {
+			lineBuf.WriteByte(',')
+			lineBuf.WriteString(arg)
+		}
 	}
 
 	persist.LoadPolicyLine(lineBuf.String(), model)
 }
 
-// genPolicyLine  generate CasbinRule model from give params.
-func (Adapter) genPolicyLine(ptype string, rule []string) CasbinRule {
-	line := CasbinRule{
-		PType: ptype,
+// genArg  generate args from pType and rule.
+func (Adapter) genArgs(ptype string, rule []string) []interface{} {
+	args := make([]interface{}, len(rule)+1)
+
+	args[0] = ptype
+
+	for idx, arg := range rule {
+		args[idx+1] = arg
 	}
 
-	l := len(rule)
-	if l > 0 {
-		line.V0 = rule[0]
-	}
-	if l > 1 {
-		line.V1 = rule[1]
-	}
-	if l > 2 {
-		line.V2 = rule[2]
-	}
-	if l > 3 {
-		line.V3 = rule[3]
-	}
-	if l > 4 {
-		line.V4 = rule[4]
-	}
-	if l > 5 {
-		line.V5 = rule[5]
-	}
-
-	return line
+	return args
 }
