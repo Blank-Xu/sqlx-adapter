@@ -15,7 +15,6 @@
 package sqlxadapter
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
@@ -110,6 +109,19 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 		}
 	}
 
+	equalValue := func(line1, line2 CasbinRule) bool {
+		if line1.PType != line2.PType ||
+			line1.V0 != line2.V0 ||
+			line1.V1 != line2.V1 ||
+			line1.V2 != line2.V2 ||
+			line1.V3 != line2.V3 ||
+			line1.V4 != line2.V4 ||
+			line1.V5 != line2.V5 {
+			return false
+		}
+		return true
+	}
+
 	var a *Adapter
 	a, err = NewAdapter(db, tableName)
 	logSQLErr("NewAdapter")
@@ -142,7 +154,7 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	logSQLErr("selectRows sqlSelectAll")
 	for idx, record := range records {
 		line := lines[idx]
-		if !reflect.DeepEqual(record, &line) {
+		if !equalValue(*record, line) {
 			t.Fatalf("selectRows records test not equal, query record: %+v, need record: %+v", record, line)
 		}
 	}
@@ -152,7 +164,7 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	i := 3
 	for _, record := range records {
 		line := lines[i]
-		if !reflect.DeepEqual(record, &line) {
+		if !equalValue(*record, line) {
 			t.Fatalf("selectWhereIn records test not equal, query record: %+v, need record: %+v", record, line)
 		}
 		i++

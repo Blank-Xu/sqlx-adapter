@@ -8,6 +8,10 @@ go:
   - "1.13"
   - "1.14"
 
+services:
+  - mysql
+  - postgresql
+
 before_install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
@@ -19,7 +23,3 @@ before_script:
 script:
   - go test -v -covermode=count -coverprofile=coverage.out
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
-
-services:
-  - mysql
-  - postgresql

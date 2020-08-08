@@ -98,7 +98,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 		tableName: tableName,
 	}
 
-	// prepare different database sql
+	// generate different databases sql
 	adapter.genSQL()
 
 	if !adapter.isTableExist() {
@@ -320,23 +320,23 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 
 // SavePolicy  save policy rules to the storage.
 func (p *Adapter) SavePolicy(model model.Model) error {
-	rules := make([][]interface{}, 0, 32)
+	args := make([][]interface{}, 0, 32)
 
-	for pType, ast := range model["p"] {
+	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {
-			args := p.genArgs(pType, rule)
-			rules = append(rules, args)
+			arg := p.genArgs(ptype, rule)
+			args = append(args, arg)
 		}
 	}
 
-	for pType, ast := range model["g"] {
+	for ptype, ast := range model["g"] {
 		for _, rule := range ast.Policy {
-			args := p.genArgs(pType, rule)
-			rules = append(rules, args)
+			arg := p.genArgs(ptype, rule)
+			args = append(args, arg)
 		}
 	}
 
-	return p.truncateAndInsertRows(rules)
+	return p.truncateAndInsertRows(args)
 }
 
 // AddPolicy  add one policy rule to the storage.
@@ -363,6 +363,7 @@ func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 			sqlBuf.WriteString(" AND v")
 			sqlBuf.WriteString(strconv.Itoa(idx))
 			sqlBuf.WriteString(" = ?")
+
 			args = append(args, arg)
 		}
 	}
@@ -387,10 +388,12 @@ func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	for idx := 0; idx < 6; idx++ {
 		if fieldIndex <= idx && idx < l {
 			value = fieldValues[idx-fieldIndex]
+
 			if value != "" {
 				sqlBuf.WriteString(" AND v")
 				sqlBuf.WriteString(strconv.Itoa(idx))
 				sqlBuf.WriteString(" = ?")
+
 				args = append(args, value)
 			}
 		}
@@ -452,11 +455,11 @@ func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
 	persist.LoadPolicyLine(lineBuf.String(), model)
 }
 
-// genArg  generate args from pType and rule.
-func (Adapter) genArgs(pType string, rule []string) []interface{} {
+// genArgs  generate args from ptype and rule.
+func (Adapter) genArgs(ptype string, rule []string) []interface{} {
 	args := make([]interface{}, 7)
 
-	args[0] = pType
+	args[0] = ptype
 
 	for idx, arg := range rule {
 		args[idx+1] = arg
