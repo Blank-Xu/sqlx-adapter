@@ -18,5 +18,3 @@
 *.vscode
 
 *.db
-
-tests/tests

@@ -21,7 +21,7 @@ import (
 	"github.com/casbin/casbin/v2/util"
 	"github.com/jmoiron/sqlx"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	// _ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
