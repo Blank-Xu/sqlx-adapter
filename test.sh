@@ -63,11 +63,7 @@ export GOPATH=/usr/local/goFiles1.11.x
 echo "prepare required packages"
 go get github.com/mattn/go-oci8
 go get golang.org/x/tools/cmd/cover
-go get github.com/mattn/goveralls
 
 echo "testing sqlx-adapter Go 1.11.x"
 cd ${TESTDIR}/
 go test -v . -covermode=count -coverprofile=coverage.out -args -dataSourceName="scott/tiger@${DOCKER_IP}:${PORT}/xe"
-
-echo "prepare goveralls"
-${GOPATH}/bin/goveralls -coverprofile=coverage.out -service=travis-ci
