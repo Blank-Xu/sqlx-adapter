@@ -1,4 +1,4 @@
-# sqlx-adapter [![Build Status](https://travis-ci.org/Blank-Xu/sqlx-adapter.svg?branch=oracle)](https://travis-ci.org/Blank-Xu/sqlx-adapter)[![Coverage Status](https://coveralls.io/repos/github/Blank-Xu/sqlx-adapter/badge.svg?branch=master)](https://coveralls.io/github/Blank-Xu/sqlx-adapter?branch=master)
+# sqlx-adapter [![Build Status](https://travis-ci.org/Blank-Xu/sqlx-adapter.svg?branch=oracle)](https://travis-ci.org/Blank-Xu/sqlx-adapter)  [![Coverage Status](https://coveralls.io/repos/github/Blank-Xu/sqlx-adapter/badge.svg?branch=oracle)](https://coveralls.io/github/Blank-Xu/sqlx-adapter?branch=oracle)  [![Go Report Card](https://goreportcard.com/badge/github.com/Blank-Xu/sqlx-adapter)](https://goreportcard.com/report/github.com/Blank-Xu/sqlx-adapter)  [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 sqlx-adapter is a [Sqlx](https://github.com/jmoiron/sqlx) Adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
 
