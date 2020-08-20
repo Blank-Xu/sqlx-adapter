@@ -292,11 +292,9 @@ func (p *Adapter) selectWhereIn(filter *Filter) (lines []*CasbinRule, err error)
 	var query string
 
 	if hasInCond {
-		query, args, err = sqlx.In(sqlBuf.String(), args...)
-		if err != nil {
+		if query, args, err = sqlx.In(sqlBuf.String(), args...); err != nil {
 			return
 		}
-
 	} else {
 		query = sqlBuf.String()
 	}
