@@ -32,19 +32,8 @@ import (
 const defaultTableName = "CASBIN_RULE"
 
 // CasbinRule  defines the casbin rule model.
-// It used for save or load policy lines from sqlx connected database.
+// It used for save or load policy lines from oracle.
 type CasbinRule struct {
-	PType string `db:"P_TYPE"`
-	V0    string `db:"V0"`
-	V1    string `db:"V1"`
-	V2    string `db:"V2"`
-	V3    string `db:"V3"`
-	V4    string `db:"V4"`
-	V5    string `db:"V5"`
-}
-
-// casbinRule  defines to parse records from oracle.
-type casbinRule struct {
 	PType sql.NullString `db:"P_TYPE"`
 	V0    sql.NullString `db:"V0"`
 	V1    sql.NullString `db:"V1"`
@@ -135,8 +124,11 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 func (p *Adapter) genSQL() {
 	p.tableName = strings.ToUpper(p.tableName)
 
-	p.sqlCreateTable = []string{fmt.Sprintf(sqlCreateTable, p.tableName),
-		fmt.Sprintf(sqlCreateIndex, p.tableName, p.tableName)}
+	p.sqlCreateTable = []string{
+		fmt.Sprintf(sqlCreateTable, p.tableName),
+		fmt.Sprintf(sqlCreateIndex, p.tableName, p.tableName),
+	}
+
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
@@ -230,15 +222,13 @@ func (p *Adapter) truncateAndInsertRows(args [][]interface{}) (err error) {
 
 	var sqlBuf bytes.Buffer
 
-	sqlBuf.Grow(64)
-
 	for _, arg := range args {
 		l := len(arg)
 		if l == 0 {
 			continue
 		}
 
-		sqlBuf.Reset()
+		sqlBuf.Grow(128)
 		sqlBuf.WriteString(p.sqlInsertRow)
 		sqlBuf.Write(p.cols[l-1])
 		sqlBuf.WriteString(" VALUES ")
@@ -248,6 +238,8 @@ func (p *Adapter) truncateAndInsertRows(args [][]interface{}) (err error) {
 			action = "exec"
 			goto ROLLBACK
 		}
+
+		sqlBuf.Reset()
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -267,32 +259,10 @@ ROLLBACK:
 }
 
 // selectRows  select all data from the table.
-func (p *Adapter) selectRows(query string, args ...interface{}) ([]CasbinRule, error) {
-	rows, err := p.db.Queryx(query, args...)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *Adapter) selectRows(query string, args ...interface{}) (lines []CasbinRule, err error) {
 	// make a slice with capacity
-	lines := make([]CasbinRule, 0, 32)
-	for rows.Next() {
-		var rule casbinRule
-		if err = rows.StructScan(&rule); err != nil {
-			return nil, err
-		}
-
-		line := CasbinRule{
-			PType: rule.PType.String,
-			V0:    rule.V0.String,
-			V1:    rule.V1.String,
-			V2:    rule.V2.String,
-			V3:    rule.V3.String,
-			V4:    rule.V4.String,
-			V5:    rule.V5.String,
-		}
-
-		lines = append(lines, line)
-	}
+	lines = make([]CasbinRule, 0, 128)
+	err = p.db.Select(&lines, query, args...)
 
 	return lines, nil
 }
@@ -301,7 +271,7 @@ func (p *Adapter) selectRows(query string, args ...interface{}) ([]CasbinRule, e
 func (p *Adapter) selectWhereIn(filter *Filter) (lines []CasbinRule, err error) {
 	var sqlBuf bytes.Buffer
 
-	sqlBuf.Grow(64)
+	sqlBuf.Grow(128)
 	sqlBuf.WriteString(p.sqlSelectWhere)
 
 	args := make([]interface{}, 0, 4)
@@ -346,11 +316,9 @@ func (p *Adapter) selectWhereIn(filter *Filter) (lines []CasbinRule, err error) 
 	var query string
 
 	if hasInCond {
-		query, args, err = sqlx.In(sqlBuf.String(), args...)
-		if err != nil {
+		if query, args, err = sqlx.In(sqlBuf.String(), args...); err != nil {
 			return
 		}
-
 	} else {
 		query = sqlBuf.String()
 	}
@@ -402,7 +370,7 @@ func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 
 	var sqlBuf bytes.Buffer
 
-	sqlBuf.Grow(64)
+	sqlBuf.Grow(128)
 	sqlBuf.WriteString(p.sqlInsertRow)
 	sqlBuf.Write(p.cols[idx])
 	sqlBuf.WriteString(" VALUES ")
@@ -417,7 +385,7 @@ func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	var sqlBuf bytes.Buffer
 
-	sqlBuf.Grow(64)
+	sqlBuf.Grow(128)
 	sqlBuf.WriteString(p.sqlDeleteByArgs)
 
 	args := make([]interface{}, 0, len(rule)+1)
@@ -441,7 +409,7 @@ func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	var sqlBuf bytes.Buffer
 
-	sqlBuf.Grow(64)
+	sqlBuf.Grow(128)
 	sqlBuf.WriteString(p.sqlDeleteByArgs)
 
 	args := make([]interface{}, 0, 4)
@@ -504,10 +472,18 @@ func (p *Adapter) IsFiltered() bool {
 func (Adapter) loadPolicyLine(line CasbinRule, model model.Model) {
 	var lineBuf bytes.Buffer
 
-	lineBuf.Grow(64)
-	lineBuf.WriteString(line.PType)
+	lineBuf.Grow(128)
+	lineBuf.WriteString(line.PType.String)
 
-	args := [6]string{line.V0, line.V1, line.V2, line.V3, line.V4, line.V5}
+	args := [6]string{
+		line.V0.String,
+		line.V1.String,
+		line.V2.String,
+		line.V3.String,
+		line.V4.String,
+		line.V5.String,
+	}
+
 	for _, arg := range args {
 		if arg != "" {
 			lineBuf.WriteByte(',')
@@ -520,12 +496,13 @@ func (Adapter) loadPolicyLine(line CasbinRule, model model.Model) {
 
 // genArg  generate args from pType and rule.
 func (Adapter) genArgs(ptype string, rule []string) []interface{} {
-	args := make([]interface{}, len(rule)+1)
+	l := len(rule)
+	args := make([]interface{}, l+1)
 
 	args[0] = ptype
 
-	for idx, arg := range rule {
-		args[idx+1] = arg
+	for i := 0; i < l; i++ {
+		args[i+1] = rule[i]
 	}
 
 	return args

@@ -15,6 +15,7 @@
 package sqlxadapter
 
 import (
+	"database/sql"
 	"flag"
 	"testing"
 
@@ -34,15 +35,68 @@ var (
 	dataSourceName = flag.String("dataSourceName", "system/oracle@127.0.0.1:1521/xe", "dataSourceName")
 
 	lines = []CasbinRule{
-		{PType: "p", V0: "alice", V1: "data1", V2: "read"},
-		{PType: "p", V0: "bob", V1: "data2", V2: "read"},
-		{PType: "p", V0: "bob", V1: "data2", V2: "write"},
-		{PType: "p", V0: "data2_admin", V1: "data1", V2: "read", V3: "test1", V4: "test2", V5: "test3"},
-		{PType: "p", V0: "data2_admin", V1: "data2", V2: "write", V3: "test1", V4: "test2", V5: "test3"},
-		{PType: "p", V0: "data1_admin", V1: "data2", V2: "write"},
-		{PType: "g", V0: "alice", V1: "data2_admin"},
-		{PType: "g", V0: "bob", V1: "data2_admin", V2: "test"},
-		{PType: "g", V0: "bob", V1: "data1_admin", V2: "test2", V3: "test3", V4: "test4", V5: "test5"},
+		{
+			PType: sql.NullString{String: "p"},
+			V0:    sql.NullString{String: "alice"},
+			V1:    sql.NullString{String: "data1"},
+			V2:    sql.NullString{String: "read"},
+		},
+		{
+			PType: sql.NullString{String: "p"},
+			V0:    sql.NullString{String: "bob"},
+			V1:    sql.NullString{String: "data2"},
+			V2:    sql.NullString{String: "read"},
+		},
+		{
+			PType: sql.NullString{String: "p"},
+			V0:    sql.NullString{String: "bob"},
+			V1:    sql.NullString{String: "data2"},
+			V2:    sql.NullString{String: "write"},
+		},
+		{
+			PType: sql.NullString{String: "p"},
+			V0:    sql.NullString{String: "data2_admin"},
+			V1:    sql.NullString{String: "data1"},
+			V2:    sql.NullString{String: "read"},
+			V3:    sql.NullString{String: "test1"},
+			V4:    sql.NullString{String: "test2"},
+			V5:    sql.NullString{String: "test3"},
+		},
+		{
+			PType: sql.NullString{String: "p"},
+			V0:    sql.NullString{String: "data2_admin"},
+			V1:    sql.NullString{String: "data2"},
+			V2:    sql.NullString{String: "write"},
+			V3:    sql.NullString{String: "test1"},
+			V4:    sql.NullString{String: "test2"},
+			V5:    sql.NullString{String: "test3"},
+		},
+		{
+			PType: sql.NullString{String: "p"},
+			V0:    sql.NullString{String: "data1_admin"},
+			V1:    sql.NullString{String: "data2"},
+			V2:    sql.NullString{String: "write"},
+		},
+		{
+			PType: sql.NullString{String: "g"},
+			V0:    sql.NullString{String: "alice"},
+			V1:    sql.NullString{String: "data2_admin"},
+		},
+		{
+			PType: sql.NullString{String: "g"},
+			V0:    sql.NullString{String: "bob"},
+			V1:    sql.NullString{String: "data2_admin"},
+			V2:    sql.NullString{String: "test"},
+		},
+		{
+			PType: sql.NullString{String: "g"},
+			V0:    sql.NullString{String: "bob"},
+			V1:    sql.NullString{String: "data1_admin"},
+			V2:    sql.NullString{String: "test2"},
+			V3:    sql.NullString{String: "test3"},
+			V4:    sql.NullString{String: "test4"},
+			V5:    sql.NullString{String: "test5"},
+		},
 	}
 
 	filter = Filter{
@@ -99,13 +153,13 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	}
 
 	equalValue := func(line1, line2 CasbinRule) bool {
-		if line1.PType != line2.PType ||
-			line1.V0 != line2.V0 ||
-			line1.V1 != line2.V1 ||
-			line1.V2 != line2.V2 ||
-			line1.V3 != line2.V3 ||
-			line1.V4 != line2.V4 ||
-			line1.V5 != line2.V5 {
+		if line1.PType.String != line2.PType.String ||
+			line1.V0.String != line2.V0.String ||
+			line1.V1.String != line2.V1.String ||
+			line1.V2.String != line2.V2.String ||
+			line1.V3.String != line2.V3.String ||
+			line1.V4.String != line2.V4.String ||
+			line1.V5.String != line2.V5.String {
 			return false
 		}
 		return true
@@ -124,7 +178,15 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 
 	rules := make([][]interface{}, len(lines))
 	for idx, rule := range lines {
-		args := a.genArgs(rule.PType, []string{rule.V0, rule.V1, rule.V2, rule.V3, rule.V4, rule.V5})
+		args := a.genArgs(rule.PType.String,
+			[]string{
+				rule.V0.String,
+				rule.V1.String,
+				rule.V2.String,
+				rule.V3.String,
+				rule.V4.String,
+				rule.V5.String,
+			})
 		rules[idx] = args
 	}
 

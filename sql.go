@@ -17,15 +17,15 @@ package sqlxadapter
 // for Oracle
 const (
 	sqlCreateTable = `
-	CREATE TABLE %s(
-		P_TYPE NVARCHAR2(32),
-	    V0     NVARCHAR2(255),
-	    V1     NVARCHAR2(255),
-	    V2     NVARCHAR2(255),
-	    V3     NVARCHAR2(255),
-	    V4     NVARCHAR2(255),
-	    V5     NVARCHAR2(255)
-	)`
+CREATE TABLE %s(
+	P_TYPE NVARCHAR2(32),
+    V0     NVARCHAR2(255),
+    V1     NVARCHAR2(255),
+    V2     NVARCHAR2(255),
+    V3     NVARCHAR2(255),
+    V4     NVARCHAR2(255),
+    V5     NVARCHAR2(255)
+)`
 	sqlCreateIndex = `CREATE INDEX IDX_%s_PTYPE ON %s (P_TYPE, V0, V1)`
 
 	sqlTruncateTable = "TRUNCATE TABLE %s"
