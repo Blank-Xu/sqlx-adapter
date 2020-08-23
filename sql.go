@@ -17,7 +17,7 @@ package sqlxadapter
 // general sql
 const (
 	sqlCreateTable = `
-CREATE TABLE %s(
+CREATE TABLE %[1]s(
     p_type varchar(32),
     v0     varchar(255),
     v1     varchar(255),
@@ -26,7 +26,7 @@ CREATE TABLE %s(
     v4     varchar(255),
     v5     varchar(255)
 );
-CREATE INDEX idx_%s_ptype ON %s (p_type, v0, v1);`
+CREATE INDEX idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlTruncateTable = "TRUNCATE TABLE %s"
 	sqlIsTableExist  = "SELECT 1 FROM %s"
 	sqlInsertRow     = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -39,7 +39,7 @@ CREATE INDEX idx_%s_ptype ON %s (p_type, v0, v1);`
 // for Sqlite3
 const (
 	sqlCreateTableSqlite3 = `
-CREATE TABLE IF NOT EXISTS %s(
+CREATE TABLE IF NOT EXISTS %[1]s(
     p_type varchar(32)  DEFAULT '' NOT NULL,
     v0     varchar(255) DEFAULT '' NOT NULL,
     v1     varchar(255) DEFAULT '' NOT NULL,
@@ -48,14 +48,14 @@ CREATE TABLE IF NOT EXISTS %s(
     v4     varchar(255) DEFAULT '' NOT NULL,
     v5     varchar(255) DEFAULT '' NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_%s_ptype ON %s (p_type, v0, v1);`
-	sqlTruncateTableSqlite3 = "DROP TABLE IF EXISTS %s;" + sqlCreateTableSqlite3
+CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type, v0, v1);`
+	sqlTruncateTableSqlite3 = "DROP TABLE IF EXISTS %[1]s;" + sqlCreateTableSqlite3
 )
 
 // for Mysql
 const (
 	sqlCreateTableMysql = `
-CREATE TABLE IF NOT EXISTS %s(
+CREATE TABLE IF NOT EXISTS %[1]s(
     p_type varchar(32)  DEFAULT '' NOT NULL,
     v0     varchar(255) DEFAULT '' NOT NULL,
     v1     varchar(255) DEFAULT '' NOT NULL,
@@ -63,14 +63,14 @@ CREATE TABLE IF NOT EXISTS %s(
     v3     varchar(255) DEFAULT '' NOT NULL,
     v4     varchar(255) DEFAULT '' NOT NULL,
     v5     varchar(255) DEFAULT '' NOT NULL,
-    INDEX idx_%s_ptype (p_type, v0, v1)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8;`
+    INDEX idx_%[1]s (p_type, v0, v1)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;`
 )
 
 // for Postgres
 const (
 	sqlCreateTablePostgres = `
-CREATE TABLE IF NOT EXISTS %s(
+CREATE TABLE IF NOT EXISTS %[1]s(
     p_type varchar(32)  DEFAULT '' NOT NULL,
     v0     varchar(255) DEFAULT '' NOT NULL,
     v1     varchar(255) DEFAULT '' NOT NULL,
@@ -79,14 +79,14 @@ CREATE TABLE IF NOT EXISTS %s(
     v4     varchar(255) DEFAULT '' NOT NULL,
     v5     varchar(255) DEFAULT '' NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_%s_ptype ON %s (p_type, v0, v1);`
+CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlInsertRowPostgres = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES ($1, $2, $3, $4, $5, $6, $7)"
 )
 
 // for Sqlserver
 const (
 	sqlCreateTableSqlserver = `
-CREATE TABLE %s(
+CREATE TABLE %[1]s(
     p_type nvarchar(32)  DEFAULT '' NOT NULL,
     v0     nvarchar(255) DEFAULT '' NOT NULL,
     v1     nvarchar(255) DEFAULT '' NOT NULL,
@@ -95,6 +95,6 @@ CREATE TABLE %s(
     v4     nvarchar(255) DEFAULT '' NOT NULL,
     v5     nvarchar(255) DEFAULT '' NOT NULL
 );
-CREATE INDEX idx_%s_ptype ON %s (p_type, v0, v1);`
+CREATE INDEX idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlInsertRowSqlserver = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)"
 )

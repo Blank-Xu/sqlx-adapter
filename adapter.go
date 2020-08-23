@@ -112,7 +112,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 
 // genSQL  generate sql based on db driver name.
 func (p *Adapter) genSQL() {
-	p.sqlCreateTable = fmt.Sprintf(sqlCreateTable, p.tableName, p.tableName, p.tableName)
+	p.sqlCreateTable = fmt.Sprintf(sqlCreateTable, p.tableName)
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
@@ -125,15 +125,15 @@ func (p *Adapter) genSQL() {
 
 	switch p.db.DriverName() {
 	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgres, p.tableName)
 	case "mysql":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableMysql, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableMysql, p.tableName)
 	case "sqlite3":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName, p.tableName, p.tableName)
-		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName, p.tableName, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName)
+		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName)
 	case "sqlserver":
-		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName, p.tableName, p.tableName)
+		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
 	}
 }
@@ -455,15 +455,15 @@ func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
 
 // genArgs  generate args from ptype and rule.
 func (Adapter) genArgs(ptype string, rule []string) []interface{} {
+	l := len(rule)
 	args := make([]interface{}, 7)
 
 	args[0] = ptype
-
-	for idx, arg := range rule {
-		args[idx+1] = arg
+	for idx := 0; idx < l; idx++ {
+		args[idx+1] = rule[idx]
 	}
 
-	for idx := len(rule) + 1; idx < 7; idx++ {
+	for idx := l + 1; idx < 7; idx++ {
 		args[idx] = ""
 	}
 
