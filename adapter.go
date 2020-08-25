@@ -40,8 +40,8 @@ type CasbinRule struct {
 	V5    string `db:"v5"`
 }
 
-// Adapter  defines the sqlx adapter for Casbin.
-// It can load policy lines from sqlx connected database or save policy lines.
+// Adapter  define the sqlx adapter for Casbin.
+// It can load policy lines or save policy lines from sqlx connected database.
 type Adapter struct {
 	db        *sqlx.DB
 	tableName string

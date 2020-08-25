@@ -18,13 +18,13 @@ package sqlxadapter
 const (
 	sqlCreateTable = `
 CREATE TABLE %[1]s(
-    p_type varchar(32),
-    v0     varchar(255),
-    v1     varchar(255),
-    v2     varchar(255),
-    v3     varchar(255),
-    v4     varchar(255),
-    v5     varchar(255)
+    p_type VARCHAR(32),
+    v0     VARCHAR(255),
+    v1     VARCHAR(255),
+    v2     VARCHAR(255),
+    v3     VARCHAR(255),
+    v4     VARCHAR(255),
+    v5     VARCHAR(255)
 );
 CREATE INDEX idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlTruncateTable = "TRUNCATE TABLE %s"
@@ -40,13 +40,27 @@ CREATE INDEX idx_%[1]s ON %[1]s (p_type, v0, v1);`
 const (
 	sqlCreateTableSqlite3 = `
 CREATE TABLE IF NOT EXISTS %[1]s(
-    p_type varchar(32)  DEFAULT '' NOT NULL,
-    v0     varchar(255) DEFAULT '' NOT NULL,
-    v1     varchar(255) DEFAULT '' NOT NULL,
-    v2     varchar(255) DEFAULT '' NOT NULL,
-    v3     varchar(255) DEFAULT '' NOT NULL,
-    v4     varchar(255) DEFAULT '' NOT NULL,
-    v5     varchar(255) DEFAULT '' NOT NULL
+    p_type VARCHAR(32)  DEFAULT '' NOT NULL,
+    v0     VARCHAR(255) DEFAULT '' NOT NULL,
+    v1     VARCHAR(255) DEFAULT '' NOT NULL,
+    v2     VARCHAR(255) DEFAULT '' NOT NULL,
+    v3     VARCHAR(255) DEFAULT '' NOT NULL,
+    v4     VARCHAR(255) DEFAULT '' NOT NULL,
+    v5     VARCHAR(255) DEFAULT '' NOT NULL,
+    CHECK (TYPEOF("p_type") = "text" AND
+           LENGTH("p_type") <= 32),
+    CHECK (TYPEOF("v0") = "text" AND
+           LENGTH("v0") <= 255),
+    CHECK (TYPEOF("v1") = "text" AND
+           LENGTH("v1") <= 255),
+    CHECK (TYPEOF("v2") = "text" AND
+           LENGTH("v2") <= 255),
+    CHECK (TYPEOF("v3") = "text" AND
+           LENGTH("v3") <= 255),
+    CHECK (TYPEOF("v4") = "text" AND
+           LENGTH("v4") <= 255),
+    CHECK (TYPEOF("v5") = "text" AND
+           LENGTH("v5") <= 255)
 );
 CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlTruncateTableSqlite3 = "DROP TABLE IF EXISTS %[1]s;" + sqlCreateTableSqlite3
@@ -56,13 +70,13 @@ CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type, v0, v1);`
 const (
 	sqlCreateTableMysql = `
 CREATE TABLE IF NOT EXISTS %[1]s(
-    p_type varchar(32)  DEFAULT '' NOT NULL,
-    v0     varchar(255) DEFAULT '' NOT NULL,
-    v1     varchar(255) DEFAULT '' NOT NULL,
-    v2     varchar(255) DEFAULT '' NOT NULL,
-    v3     varchar(255) DEFAULT '' NOT NULL,
-    v4     varchar(255) DEFAULT '' NOT NULL,
-    v5     varchar(255) DEFAULT '' NOT NULL,
+    p_type VARCHAR(32)  DEFAULT '' NOT NULL,
+    v0     VARCHAR(255) DEFAULT '' NOT NULL,
+    v1     VARCHAR(255) DEFAULT '' NOT NULL,
+    v2     VARCHAR(255) DEFAULT '' NOT NULL,
+    v3     VARCHAR(255) DEFAULT '' NOT NULL,
+    v4     VARCHAR(255) DEFAULT '' NOT NULL,
+    v5     VARCHAR(255) DEFAULT '' NOT NULL,
     INDEX idx_%[1]s (p_type, v0, v1)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;`
 )
@@ -71,13 +85,13 @@ CREATE TABLE IF NOT EXISTS %[1]s(
 const (
 	sqlCreateTablePostgres = `
 CREATE TABLE IF NOT EXISTS %[1]s(
-    p_type varchar(32)  DEFAULT '' NOT NULL,
-    v0     varchar(255) DEFAULT '' NOT NULL,
-    v1     varchar(255) DEFAULT '' NOT NULL,
-    v2     varchar(255) DEFAULT '' NOT NULL,
-    v3     varchar(255) DEFAULT '' NOT NULL,
-    v4     varchar(255) DEFAULT '' NOT NULL,
-    v5     varchar(255) DEFAULT '' NOT NULL
+    p_type VARCHAR(32)  DEFAULT '' NOT NULL,
+    v0     VARCHAR(255) DEFAULT '' NOT NULL,
+    v1     VARCHAR(255) DEFAULT '' NOT NULL,
+    v2     VARCHAR(255) DEFAULT '' NOT NULL,
+    v3     VARCHAR(255) DEFAULT '' NOT NULL,
+    v4     VARCHAR(255) DEFAULT '' NOT NULL,
+    v5     VARCHAR(255) DEFAULT '' NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlInsertRowPostgres = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES ($1, $2, $3, $4, $5, $6, $7)"
@@ -87,13 +101,13 @@ CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type, v0, v1);`
 const (
 	sqlCreateTableSqlserver = `
 CREATE TABLE %[1]s(
-    p_type nvarchar(32)  DEFAULT '' NOT NULL,
-    v0     nvarchar(255) DEFAULT '' NOT NULL,
-    v1     nvarchar(255) DEFAULT '' NOT NULL,
-    v2     nvarchar(255) DEFAULT '' NOT NULL,
-    v3     nvarchar(255) DEFAULT '' NOT NULL,
-    v4     nvarchar(255) DEFAULT '' NOT NULL,
-    v5     nvarchar(255) DEFAULT '' NOT NULL
+    p_type NVARCHAR(32)  DEFAULT '' NOT NULL,
+    v0     NVARCHAR(255) DEFAULT '' NOT NULL,
+    v1     NVARCHAR(255) DEFAULT '' NOT NULL,
+    v2     NVARCHAR(255) DEFAULT '' NOT NULL,
+    v3     NVARCHAR(255) DEFAULT '' NOT NULL,
+    v4     NVARCHAR(255) DEFAULT '' NOT NULL,
+    v5     NVARCHAR(255) DEFAULT '' NOT NULL
 );
 CREATE INDEX idx_%[1]s ON %[1]s (p_type, v0, v1);`
 	sqlInsertRowSqlserver = "INSERT INTO %s (p_type, v0, v1, v2, v3, v4, v5) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)"

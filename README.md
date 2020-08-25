@@ -15,10 +15,10 @@ With this library, Casbin can load policy lines from Sqlx supported databases or
 ## Tested Databases
 ### `master` branch
 - SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
-- Mysql(v5.5): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
+- MySQL(v5.5): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
 - MariaDB(v10.2): [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
-- Postgres(v9.6): [github.com/lib/pq](https://github.com/lib/pq)
-- SqlServer(v2008R2-SP3): [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
+- PostgreSQL(v9.6): [github.com/lib/pq](https://github.com/lib/pq)
+- SQL Server(v2008R2-SP3): [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb)
 
 ### `oracle` branch
 - Oracle(v11.2): [github.com/mattn/go-oci8](https://github.com/mattn/go-oci8)
