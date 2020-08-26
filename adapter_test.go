@@ -36,62 +36,62 @@ var (
 
 	lines = []CasbinRule{
 		{
-			PType: sql.NullString{String: "p"},
-			V0:    sql.NullString{String: "alice"},
-			V1:    sql.NullString{String: "data1"},
+			PType: "p",
+			V0:    "alice",
+			V1:    "data1",
 			V2:    sql.NullString{String: "read"},
 		},
 		{
-			PType: sql.NullString{String: "p"},
-			V0:    sql.NullString{String: "bob"},
-			V1:    sql.NullString{String: "data2"},
+			PType: "p",
+			V0:    "bob",
+			V1:    "data2",
 			V2:    sql.NullString{String: "read"},
 		},
 		{
-			PType: sql.NullString{String: "p"},
-			V0:    sql.NullString{String: "bob"},
-			V1:    sql.NullString{String: "data2"},
+			PType: "p",
+			V0:    "bob",
+			V1:    "data2",
 			V2:    sql.NullString{String: "write"},
 		},
 		{
-			PType: sql.NullString{String: "p"},
-			V0:    sql.NullString{String: "data2_admin"},
-			V1:    sql.NullString{String: "data1"},
+			PType: "p",
+			V0:    "data2_admin",
+			V1:    "data1",
 			V2:    sql.NullString{String: "read"},
 			V3:    sql.NullString{String: "test1"},
 			V4:    sql.NullString{String: "test2"},
 			V5:    sql.NullString{String: "test3"},
 		},
 		{
-			PType: sql.NullString{String: "p"},
-			V0:    sql.NullString{String: "data2_admin"},
-			V1:    sql.NullString{String: "data2"},
+			PType: "p",
+			V0:    "data2_admin",
+			V1:    "data2",
 			V2:    sql.NullString{String: "write"},
 			V3:    sql.NullString{String: "test1"},
 			V4:    sql.NullString{String: "test2"},
 			V5:    sql.NullString{String: "test3"},
 		},
 		{
-			PType: sql.NullString{String: "p"},
-			V0:    sql.NullString{String: "data1_admin"},
-			V1:    sql.NullString{String: "data2"},
+			PType: "p",
+			V0:    "data1_admin",
+			V1:    "data2",
 			V2:    sql.NullString{String: "write"},
 		},
 		{
-			PType: sql.NullString{String: "g"},
-			V0:    sql.NullString{String: "alice"},
-			V1:    sql.NullString{String: "data2_admin"},
+			PType: "g",
+			V0:    "alice",
+			V1:    "data2_admin",
 		},
 		{
-			PType: sql.NullString{String: "g"},
-			V0:    sql.NullString{String: "bob"},
-			V1:    sql.NullString{String: "data2_admin"},
+			PType: "g",
+			V0:    "bob",
+			V1:    "data2_admin",
 			V2:    sql.NullString{String: "test"},
 		},
 		{
-			PType: sql.NullString{String: "g"},
-			V0:    sql.NullString{String: "bob"},
-			V1:    sql.NullString{String: "data1_admin"},
+			PType: "g",
+			V0:    "bob",
+			V1:    "data1_admin",
 			V2:    sql.NullString{String: "test2"},
 			V3:    sql.NullString{String: "test3"},
 			V4:    sql.NullString{String: "test4"},
@@ -121,19 +121,19 @@ func TestAdapters(t *testing.T) {
 	t.Log("---------- testTableName finished")
 
 	t.Log("---------- testSQL start")
-	testSQL(t, db, "sqlxadapter_sql")
+	testSQL(t, db, "SQLXADAPTER_SQL")
 	t.Log("---------- testSQL finished")
 
 	t.Log("---------- testSaveLoad start")
-	testSaveLoad(t, db, "sqlxadapter_s_l")
+	testSaveLoad(t, db, "SQLXADAPTER_S_L")
 	t.Log("---------- testSaveLoad finished")
 
 	t.Log("---------- testAutoSave start")
-	testAutoSave(t, db, "sqlxadapter_a_s")
+	testAutoSave(t, db, "SQLXADAPTER_A_S")
 	t.Log("---------- testAutoSave finished")
 
 	t.Log("---------- testFilteredPolicy start")
-	testFilteredPolicy(t, db, "sqlxadapter_f_p")
+	testFilteredPolicy(t, db, "SQLXADAPTER_F_P")
 	t.Log("---------- testFilteredPolicy finished")
 }
 
@@ -153,9 +153,9 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	}
 
 	equalValue := func(line1, line2 CasbinRule) bool {
-		if line1.PType.String != line2.PType.String ||
-			line1.V0.String != line2.V0.String ||
-			line1.V1.String != line2.V1.String ||
+		if line1.PType != line2.PType ||
+			line1.V0 != line2.V0 ||
+			line1.V1 != line2.V1 ||
 			line1.V2.String != line2.V2.String ||
 			line1.V3.String != line2.V3.String ||
 			line1.V4.String != line2.V4.String ||
@@ -178,10 +178,10 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 
 	rules := make([][]interface{}, len(lines))
 	for idx, rule := range lines {
-		args := a.genArgs(rule.PType.String,
+		args := a.genArgs(rule.PType,
 			[]string{
-				rule.V0.String,
-				rule.V1.String,
+				rule.V0,
+				rule.V1,
 				rule.V2.String,
 				rule.V3.String,
 				rule.V4.String,
@@ -193,7 +193,7 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	err = a.truncateAndInsertRows(rules)
 	logSQLErr("truncateAndInsertRows")
 
-	err = a.deleteRows(a.sqlDeleteByArgs, "g")
+	err = a.deleteRows(string(a.sqlDeleteByArgs), "g")
 	logSQLErr("deleteRows sqlDeleteByArgs g")
 
 	err = a.deleteRows(a.sqlDeleteAll)

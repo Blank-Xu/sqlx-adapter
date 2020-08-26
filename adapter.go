@@ -34,17 +34,17 @@ const defaultTableName = "CASBIN_RULE"
 // CasbinRule  defines the casbin rule model.
 // It used for save or load policy lines from oracle.
 type CasbinRule struct {
-	PType sql.NullString `db:"P_TYPE"`
-	V0    sql.NullString `db:"V0"`
-	V1    sql.NullString `db:"V1"`
+	PType string         `db:"P_TYPE"`
+	V0    string         `db:"V0"`
+	V1    string         `db:"V1"`
 	V2    sql.NullString `db:"V2"`
 	V3    sql.NullString `db:"V3"`
 	V4    sql.NullString `db:"V4"`
 	V5    sql.NullString `db:"V5"`
 }
 
-// Adapter  defines the sqlx adapter for Casbin.
-// It can load policy lines from sqlx connected database or save policy lines.
+// Adapter  define the sqlx adapter for Casbin.
+// It can load policy lines or save policy lines from sqlx connected database.
 type Adapter struct {
 	db        *sqlx.DB
 	tableName string
@@ -54,11 +54,11 @@ type Adapter struct {
 	sqlCreateTable   []string
 	sqlTruncateTable string
 	sqlIsTableExist  string
-	sqlInsertRow     string
+	sqlInsertRow     []byte
 	sqlDeleteAll     string
-	sqlDeleteByArgs  string
+	sqlDeleteByArgs  []byte
 	sqlSelectAll     string
-	sqlSelectWhere   string
+	sqlSelectWhere   []byte
 
 	cols         [][]byte
 	placeholders [][]byte
@@ -78,22 +78,22 @@ type Filter struct {
 
 // NewAdapter  the constructor for Adapter.
 // db should connected to database and controlled by user.
-// If tableName == "", the Adapter will automatically create a table named "casbin_rule".
+// If tableName == "", the Adapter will automatically create a table named 'CASBIN_RULE'.
 func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 	if db == nil {
 		return nil, errors.New("db is nil")
-	}
-
-	// check db connecting
-	err := db.Ping()
-	if err != nil {
-		return nil, err
 	}
 
 	switch db.DriverName() {
 	case "oci8", "ora", "goracle":
 	default:
 		return nil, errors.New("sqlxadapter: this branch just support oracle")
+	}
+
+	// check db connecting
+	err := db.Ping()
+	if err != nil {
+		return nil, err
 	}
 
 	if tableName == "" {
@@ -126,18 +126,18 @@ func (p *Adapter) genSQL() {
 
 	p.sqlCreateTable = []string{
 		fmt.Sprintf(sqlCreateTable, p.tableName),
-		fmt.Sprintf(sqlCreateIndex, p.tableName, p.tableName),
+		fmt.Sprintf(sqlCreateIndex, p.tableName),
 	}
 
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
-	p.sqlInsertRow = fmt.Sprintf(sqlInsertRow, p.tableName)
+	p.sqlInsertRow = []byte(fmt.Sprintf(sqlInsertRow, p.tableName))
 	p.sqlDeleteAll = fmt.Sprintf(sqlDeleteAll, p.tableName)
-	p.sqlDeleteByArgs = fmt.Sprintf(sqlDeleteByArgs, p.tableName)
+	p.sqlDeleteByArgs = []byte(fmt.Sprintf(sqlDeleteByArgs, p.tableName))
 
 	p.sqlSelectAll = fmt.Sprintf(sqlSelectAll, p.tableName)
-	p.sqlSelectWhere = fmt.Sprintf(sqlSelectWhere, p.tableName)
+	p.sqlSelectWhere = []byte(fmt.Sprintf(sqlSelectWhere, p.tableName))
 }
 
 // genParams  generate all cols and placeholders by db driver name.
@@ -229,7 +229,7 @@ func (p *Adapter) truncateAndInsertRows(args [][]interface{}) (err error) {
 		}
 
 		sqlBuf.Grow(128)
-		sqlBuf.WriteString(p.sqlInsertRow)
+		sqlBuf.Write(p.sqlInsertRow)
 		sqlBuf.Write(p.cols[l-1])
 		sqlBuf.WriteString(" VALUES ")
 		sqlBuf.Write(p.placeholders[l-1])
@@ -272,7 +272,7 @@ func (p *Adapter) selectWhereIn(filter *Filter) (lines []CasbinRule, err error) 
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(128)
-	sqlBuf.WriteString(p.sqlSelectWhere)
+	sqlBuf.Write(p.sqlSelectWhere)
 
 	args := make([]interface{}, 0, 4)
 
@@ -371,7 +371,7 @@ func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(128)
-	sqlBuf.WriteString(p.sqlInsertRow)
+	sqlBuf.Write(p.sqlInsertRow)
 	sqlBuf.Write(p.cols[idx])
 	sqlBuf.WriteString(" VALUES ")
 	sqlBuf.Write(p.placeholders[idx])
@@ -386,7 +386,7 @@ func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(128)
-	sqlBuf.WriteString(p.sqlDeleteByArgs)
+	sqlBuf.Write(p.sqlDeleteByArgs)
 
 	args := make([]interface{}, 0, len(rule)+1)
 	args = append(args, ptype)
@@ -410,7 +410,7 @@ func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(128)
-	sqlBuf.WriteString(p.sqlDeleteByArgs)
+	sqlBuf.Write(p.sqlDeleteByArgs)
 
 	args := make([]interface{}, 0, 4)
 	args = append(args, ptype)
@@ -473,11 +473,11 @@ func (Adapter) loadPolicyLine(line CasbinRule, model model.Model) {
 	var lineBuf bytes.Buffer
 
 	lineBuf.Grow(128)
-	lineBuf.WriteString(line.PType.String)
+	lineBuf.WriteString(line.PType)
 
 	args := [6]string{
-		line.V0.String,
-		line.V1.String,
+		line.V0,
+		line.V1,
 		line.V2.String,
 		line.V3.String,
 		line.V4.String,

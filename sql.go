@@ -18,15 +18,15 @@ package sqlxadapter
 const (
 	sqlCreateTable = `
 CREATE TABLE %s(
-	P_TYPE NVARCHAR2(32),
-    V0     NVARCHAR2(255),
-    V1     NVARCHAR2(255),
+	P_TYPE NVARCHAR2(32) DEFAULT '' NOT NULL,
+    V0     NVARCHAR2(255) DEFAULT '' NOT NULL,
+    V1     NVARCHAR2(255) DEFAULT '' NOT NULL,
     V2     NVARCHAR2(255),
     V3     NVARCHAR2(255),
     V4     NVARCHAR2(255),
     V5     NVARCHAR2(255)
 )`
-	sqlCreateIndex = `CREATE INDEX IDX_%s_PTYPE ON %s (P_TYPE, V0, V1)`
+	sqlCreateIndex = `CREATE INDEX IDX_%[1]s ON %[1]s (P_TYPE, V0, V1)`
 
 	sqlTruncateTable = "TRUNCATE TABLE %s"
 	sqlIsTableExist  = "SELECT 1 FROM %s"
