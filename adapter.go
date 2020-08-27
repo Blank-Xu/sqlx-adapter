@@ -390,15 +390,18 @@ func (p *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 
 	args := make([]interface{}, 0, len(rule)+1)
 	args = append(args, ptype)
+	j := 2
 
 	for idx, arg := range rule {
 		if arg != "" {
 			sqlBuf.WriteString(" AND V")
 			sqlBuf.WriteString(strconv.Itoa(idx))
 			sqlBuf.WriteString(" = :arg")
-			sqlBuf.WriteString(strconv.Itoa(idx + 2))
+			sqlBuf.WriteString(strconv.Itoa(j))
 
 			args = append(args, arg)
+
+			j++
 		}
 	}
 
@@ -418,6 +421,7 @@ func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	var value string
 
 	l := fieldIndex + len(fieldValues)
+	j := 2
 
 	for idx := 0; idx < 6; idx++ {
 		if fieldIndex <= idx && idx < l {
@@ -427,9 +431,11 @@ func (p *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 				sqlBuf.WriteString(" AND V")
 				sqlBuf.WriteString(strconv.Itoa(idx))
 				sqlBuf.WriteString(" = :arg")
-				sqlBuf.WriteString(strconv.Itoa(idx + 2))
+				sqlBuf.WriteString(strconv.Itoa(j))
 
 				args = append(args, value)
+
+				j++
 			}
 		}
 	}
