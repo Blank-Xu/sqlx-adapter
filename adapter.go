@@ -227,7 +227,7 @@ ROLLBACK:
 // selectRows  select eligible data by args from the table.
 func (p *Adapter) selectRows(query string, args ...interface{}) ([]*CasbinRule, error) {
 	// make a slice with capacity
-	lines := make([]*CasbinRule, 0, 32)
+	lines := make([]*CasbinRule, 0, 64)
 
 	if len(args) == 0 {
 		return lines, p.db.Select(&lines, query)
@@ -318,7 +318,7 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 
 // SavePolicy  save policy rules to the storage.
 func (p *Adapter) SavePolicy(model model.Model) error {
-	args := make([][]interface{}, 0, 32)
+	args := make([][]interface{}, 0, 64)
 
 	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {

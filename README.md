@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ---
 
-sqlx-adapter is a [Sqlx](https://github.com/jmoiron/sqlx) Adapter for [Casbin V2](https://github.com/casbin/casbin/v2). 
+sqlx-adapter is a [Sqlx](https://github.com/jmoiron/sqlx) Adapter for [Casbin V2](https://github.com/casbin/casbin). 
 
 With this library, Casbin can load policy lines from Sqlx supported databases or save policy lines.
 
@@ -30,7 +30,7 @@ With this library, Casbin can load policy lines from Sqlx supported databases or
 
 
 ## Simple Examples
-### Sqlite3
+### SQLite3
 ```go
 package main
 
@@ -90,7 +90,7 @@ func main() {
 ```
 
 
-### Mysql
+### MySQL
 
 ```go
 package main
