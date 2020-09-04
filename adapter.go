@@ -16,6 +16,8 @@ package sqlxadapter
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
@@ -44,6 +46,7 @@ type CasbinRule struct {
 // It can load policy lines or save policy lines from sqlx connected database.
 type Adapter struct {
 	db        *sqlx.DB
+	ctx       context.Context
 	tableName string
 
 	isFiltered bool
@@ -74,12 +77,19 @@ type Filter struct {
 // db should connected to database and controlled by user.
 // If tableName == "", the Adapter will automatically create a table named "casbin_rule".
 func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
+	return NewAdapterContext(context.Background(), db, tableName)
+}
+
+// NewAdapterContext  the constructor for Adapter.
+// db should connected to database and controlled by user.
+// If tableName == "", the Adapter will automatically create a table named "casbin_rule".
+func NewAdapterContext(ctx context.Context, db *sqlx.DB, tableName string) (*Adapter, error) {
 	if db == nil {
 		return nil, errors.New("db is nil")
 	}
 
 	// check db connecting
-	err := db.Ping()
+	err := db.PingContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +105,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 
 	adapter := Adapter{
 		db:        db,
+		ctx:       ctx,
 		tableName: tableName,
 	}
 
@@ -114,6 +125,7 @@ func NewAdapter(db *sqlx.DB, tableName string) (*Adapter, error) {
 func (p *Adapter) genSQL() {
 	p.sqlCreateTable = fmt.Sprintf(sqlCreateTable, p.tableName)
 	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
+
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
 	p.sqlInsertRow = fmt.Sprintf(sqlInsertRow, p.tableName)
@@ -140,21 +152,21 @@ func (p *Adapter) genSQL() {
 
 // createTable  create a not exists table.
 func (p *Adapter) createTable() error {
-	_, err := p.db.Exec(p.sqlCreateTable)
+	_, err := p.db.ExecContext(p.ctx, p.sqlCreateTable)
 
 	return err
 }
 
 // truncateTable  clear the table.
 func (p *Adapter) truncateTable() error {
-	_, err := p.db.Exec(p.sqlTruncateTable)
+	_, err := p.db.ExecContext(p.ctx, p.sqlTruncateTable)
 
 	return err
 }
 
 // isTableExist  check the table exists.
 func (p *Adapter) isTableExist() bool {
-	_, err := p.db.Exec(p.sqlIsTableExist)
+	_, err := p.db.ExecContext(p.ctx, p.sqlIsTableExist)
 
 	return err == nil
 }
@@ -168,7 +180,7 @@ func (p *Adapter) deleteRows(query string, args ...interface{}) error {
 		query = p.db.Rebind(query)
 	}
 
-	_, err := p.db.Exec(query, args...)
+	_, err := p.db.ExecContext(p.ctx, query, args...)
 
 	return err
 }
@@ -179,25 +191,25 @@ func (p *Adapter) truncateAndInsertRows(rules [][]interface{}) (err error) {
 		return
 	}
 
-	tx, err := p.db.Beginx()
+	tx, err := p.db.BeginTx(p.ctx, nil)
 	if err != nil {
 		return
 	}
 
 	var action string
-	// if _, err = tx.Exec(p.sqlDeleteAll); err != nil {
+	var stmt *sql.Stmt
+	// if _, err = tx.ExecContext(p.ctx, p.sqlDeleteAll); err != nil {
 	// 	action = "delete all"
 	// 	goto ROLLBACK
 	// }
 
-	stmt, err := tx.Preparex(p.sqlInsertRow)
-	if err != nil {
-		action = "preparex"
+	if stmt, err = tx.PrepareContext(p.ctx, p.sqlInsertRow); err != nil {
+		action = "prepare context"
 		goto ROLLBACK
 	}
 
 	for _, rule := range rules {
-		if _, err = stmt.Exec(rule...); err != nil {
+		if _, err = stmt.ExecContext(p.ctx, rule...); err != nil {
 			action = "stmt exec"
 			goto ROLLBACK
 		}
@@ -230,7 +242,7 @@ func (p *Adapter) selectRows(query string, args ...interface{}) ([]*CasbinRule, 
 	lines := make([]*CasbinRule, 0, 64)
 
 	if len(args) == 0 {
-		return lines, p.db.Select(&lines, query)
+		return lines, p.db.SelectContext(p.ctx, &lines, query)
 	}
 
 	switch p.db.DriverName() {
@@ -240,7 +252,7 @@ func (p *Adapter) selectRows(query string, args ...interface{}) ([]*CasbinRule, 
 		query = p.db.Rebind(query)
 	}
 
-	return lines, p.db.Select(&lines, query, args...)
+	return lines, p.db.SelectContext(p.ctx, &lines, query, args...)
 }
 
 // selectWhereIn  select eligible data by filter from the table.
@@ -341,7 +353,7 @@ func (p *Adapter) SavePolicy(model model.Model) error {
 func (p *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	args := p.genArgs(ptype, rule)
 
-	_, err := p.db.Exec(p.sqlInsertRow, args...)
+	_, err := p.db.ExecContext(p.ctx, p.sqlInsertRow, args...)
 
 	return err
 }
