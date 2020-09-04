@@ -17,10 +17,10 @@ package sqlxadapter
 import (
 	"database/sql"
 	"flag"
+	"strings"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/util"
 	"github.com/jmoiron/sqlx"
 
 	_ "github.com/mattn/go-oci8"
@@ -148,7 +148,7 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 	var err error
 	logSQLErr := func(action string) {
 		if err != nil {
-			t.Fatalf("%s test failed, err: %v", action, err)
+			t.Errorf("%s test failed, err: %v", action, err)
 		}
 	}
 
@@ -288,7 +288,7 @@ func testAutoSave(t *testing.T, db *sqlx.DB, tableName string) {
 	var err error
 	logErr := func(action string) {
 		if err != nil {
-			t.Fatalf("%s test failed, err: %v", action, err)
+			t.Errorf("%s test failed, err: %v", action, err)
 		}
 	}
 
@@ -348,7 +348,7 @@ func testFilteredPolicy(t *testing.T, db *sqlx.DB, tableName string) {
 	var err error
 	logErr := func(action string) {
 		if err != nil {
-			t.Fatalf("%s test failed, err: %v", action, err)
+			t.Errorf("%s test failed, err: %v", action, err)
 		}
 	}
 
@@ -385,7 +385,17 @@ func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
 	myRes := e.GetPolicy()
 	t.Log("Policy: ", myRes)
 
-	if !util.Array2DEquals(res, myRes) {
-		t.Error("Policy: ", myRes, ", supposed to be ", res)
+	m := make(map[string]struct{}, len(myRes))
+	for _, record := range myRes {
+		key := strings.Join(record, ",")
+		m[key] = struct{}{}
+	}
+
+	for _, record := range res {
+		key := strings.Join(record, ",")
+		if _, ok := m[key]; !ok {
+			t.Error("Policy: ", myRes, ", supposed to be ", res)
+			break
+		}
 	}
 }
