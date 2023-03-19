@@ -596,7 +596,15 @@ func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]stri
 
 	oldPolicies = make([][]string, 0, len(oldRows))
 	for _, rule := range oldRows {
-		oldPolicies = append(oldPolicies, []string{rule.PType, rule.V0, rule.V1, rule.V2, rule.V3, rule.V4, rule.V5})
+		oldRule := []string{rule.PType, rule.V0, rule.V1, rule.V2, rule.V3, rule.V4, rule.V5}
+		oldPolicy := make([]string, 0, len(oldRule))
+		for _, val := range oldRule {
+			if val == "" {
+				break
+			}
+			oldPolicy = append(oldPolicy, val)
+		}
+		oldPolicies = append(oldPolicies, oldPolicy)
 	}
 
 	return
