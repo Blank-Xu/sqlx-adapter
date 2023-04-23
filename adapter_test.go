@@ -58,9 +58,9 @@ var (
 		V0:    []string{"bob", "data2_admin"},
 		V1:    []string{"data1", "data2"},
 		V2:    []string{"read", "write"},
-		V3:    []string{"test1"},
-		V4:    []string{"test2"},
-		V5:    []string{"test3"},
+		V3:    []string{""},
+		V4:    []string{""},
+		V5:    []string{""},
 	}
 )
 
@@ -176,7 +176,15 @@ func testSQL(t *testing.T, db *sqlx.DB, tableName string) {
 		}
 	}
 
-	records, err = a.selectWhereIn(&filter)
+	records, err = a.selectWhereIn(&Filter{
+		PType: []string{"p"},
+		V0:    []string{"bob", "data2_admin"},
+		V1:    []string{"data1", "data2"},
+		V2:    []string{"read", "write"},
+		V3:    []string{"test1"},
+		V4:    []string{"test2"},
+		V5:    []string{"test3"},
+	})
 	logErr("selectWhereIn")
 	i := 3
 	for _, record := range records {
@@ -361,12 +369,12 @@ func testFilteredPolicy(t *testing.T, db *sqlx.DB, tableName string) {
 	logErr("LoadFilteredPolicy alice bob")
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 
-	_, err = e.AddPolicy("bob", "data1", "write", "test1", "test2", "test3")
+	_, err = e.AddPolicy("bob", "data2", "read")
 	logErr("AddPolicy")
 
 	err = e.LoadFilteredPolicy(&filter)
 	logErr("LoadFilteredPolicy filter")
-	testGetPolicy(t, e, [][]string{{"bob", "data1", "write", "test1", "test2", "test3"}})
+	testGetPolicy(t, e, [][]string{{"bob", "data2", "read"}})
 }
 
 func testUpdatePolicy(t *testing.T, db *sqlx.DB, tableName string) {

@@ -1,4 +1,4 @@
-github.com/casbin/casbin/v2 v2.33.0 h1:qOILA1IveAOuO+IDU/o6J2WYjQJo0NQ6lDzOiUBH0BM=
-github.com/casbin/casbin/v2 v2.33.0/go.mod h1:vByNa/Fchek0KZUgG5wEsl7iFsiviAYKRtgrQfcJqHg=
-github.com/jmoiron/sqlx v1.3.4 h1:wv+0IJZfL5z0uZoUjlpKgHkgaFSYD+r9CfrXjEXsO7w=
-github.com/jmoiron/sqlx v1.3.4/go.mod h1:2BljVx/86SuTyjE+aPYlHCTNvZrnJXghYGpNiXLBMCQ=
+github.com/casbin/casbin/v2 v2.65.2 h1:a8XUm1Xls9sXc4RISPFEDQZrqpsv5y1KwwB174W7i74=
+github.com/casbin/casbin/v2 v2.65.2/go.mod h1:vByNa/Fchek0KZUgG5wEsl7iFsiviAYKRtgrQfcJqHg=
+github.com/jmoiron/sqlx v1.3.5 h1:vFFPA71p1o5gAeqtEAwLU4dnX2napprKtHr7PYIcN3g=
+github.com/jmoiron/sqlx v1.3.5/go.mod h1:nRVWtLre0KfCLJvgxzCsLVMogSvQ1zNJtpYr2Ccp0mQ=
