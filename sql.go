@@ -14,7 +14,7 @@
 
 package sqlxadapter
 
-// general sql
+// general SQL.
 const (
 	sqlCreateTable = `
 CREATE TABLE %[1]s(
@@ -27,18 +27,17 @@ CREATE TABLE %[1]s(
     v5     VARCHAR(255)
 );
 CREATE INDEX idx_%[1]s ON %[1]s (p_type,v0,v1);`
-	sqlTruncateTable = "TRUNCATE TABLE %s"
-	sqlIsTableExist  = "SELECT 1 FROM %s WHERE 1=0"
-	sqlInsertRow     = "INSERT INTO %s (p_type,v0,v1,v2,v3,v4,v5) VALUES (?,?,?,?,?,?,?)"
-	sqlUpdateRow     = "UPDATE %s SET p_type=?,v0=?,v1=?,v2=?,v3=?,v4=?,v5=? WHERE p_type=? AND v0=? AND v1=? AND v2=? AND v3=? AND v4=? AND v5=?"
-	sqlDeleteAll     = "DELETE FROM %s"
-	sqlDeleteRow     = "DELETE FROM %s WHERE p_type=? AND v0=? AND v1=? AND v2=? AND v3=? AND v4=? AND v5=?"
-	sqlDeleteByArgs  = "DELETE FROM %s WHERE p_type=?"
-	sqlSelectAll     = "SELECT p_type,v0,v1,v2,v3,v4,v5 FROM %s"
-	sqlSelectWhere   = "SELECT p_type,v0,v1,v2,v3,v4,v5 FROM %s WHERE "
+	sqlIsTableExist = "SELECT 1 FROM %s WHERE 1=0"
+	sqlInsertRow    = "INSERT INTO %s (p_type,v0,v1,v2,v3,v4,v5) VALUES (?,?,?,?,?,?,?)"
+	sqlUpdateRow    = "UPDATE %s SET p_type=?,v0=?,v1=?,v2=?,v3=?,v4=?,v5=? WHERE p_type=? AND v0=? AND v1=? AND v2=? AND v3=? AND v4=? AND v5=?"
+	sqlDeleteAll    = "DELETE FROM %s"
+	sqlDeleteRow    = "DELETE FROM %s WHERE p_type=? AND v0=? AND v1=? AND v2=? AND v3=? AND v4=? AND v5=?"
+	sqlDeleteByArgs = "DELETE FROM %s WHERE p_type=?"
+	sqlSelectAll    = "SELECT p_type,v0,v1,v2,v3,v4,v5 FROM %s"
+	sqlSelectWhere  = "SELECT p_type,v0,v1,v2,v3,v4,v5 FROM %s WHERE "
 )
 
-// for Sqlite3
+// for SQLite3.
 const (
 	sqlCreateTableSqlite3 = `
 CREATE TABLE IF NOT EXISTS %[1]s(
@@ -65,10 +64,9 @@ CREATE TABLE IF NOT EXISTS %[1]s(
            LENGTH("v5") <= 255)
 );
 CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type,v0,v1);`
-	sqlTruncateTableSqlite3 = "DROP TABLE IF EXISTS %[1]s;" + sqlCreateTableSqlite3
 )
 
-// for Mysql
+// for MySQL.
 const (
 	sqlCreateTableMysql = `
 CREATE TABLE IF NOT EXISTS %[1]s(
@@ -83,7 +81,7 @@ CREATE TABLE IF NOT EXISTS %[1]s(
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;`
 )
 
-// for Postgres
+// for PostgreSQL.
 const (
 	sqlCreateTablePostgres = `
 CREATE TABLE IF NOT EXISTS %[1]s(
@@ -101,7 +99,7 @@ CREATE INDEX IF NOT EXISTS idx_%[1]s ON %[1]s (p_type,v0,v1);`
 	sqlDeleteRowPostgres = "DELETE FROM %s WHERE p_type=$1 AND v0=$2 AND v1=$3 AND v2=$4 AND v3=$5 AND v4=$6 AND v5=$7"
 )
 
-// for Sqlserver
+// for SQLServer.
 const (
 	sqlCreateTableSqlserver = `
 CREATE TABLE %[1]s(
