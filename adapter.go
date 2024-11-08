@@ -142,17 +142,17 @@ func (p *Adapter) genSQL() {
 	p.sqlSelectWhere = fmt.Sprintf(sqlSelectWhere, p.tableName)
 
 	switch p.db.DriverName() {
-	case "postgres", "pgx", "pq-timeouts", "cloudsqlpostgres":
+	case "postgres", "pgx", "pq-timeouts", "cloudsql-postgres", "ql", "nrpostgres", "cockroach":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTablePostgres, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowPostgres, p.tableName)
 		p.sqlUpdateRow = fmt.Sprintf(sqlUpdateRowPostgres, p.tableName)
 		p.sqlDeleteRow = fmt.Sprintf(sqlDeleteRowPostgres, p.tableName)
-	case "mysql":
+	case "mysql", "nrmysql":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableMysql, p.tableName)
-	case "sqlite3":
+	case "sqlite", "sqlite3":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName)
 		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName)
-	case "sqlserver":
+	case "sqlserver", "azuresql":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
 		p.sqlUpdateRow = fmt.Sprintf(sqlUpdateRowSqlserver, p.tableName)
