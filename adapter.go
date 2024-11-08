@@ -53,16 +53,15 @@ type Adapter struct {
 
 	isFiltered bool
 
-	sqlCreateTable   string
-	sqlTruncateTable string
-	sqlIsTableExist  string
-	sqlInsertRow     string
-	sqlUpdateRow     string
-	sqlDeleteAll     string
-	sqlDeleteRow     string
-	sqlDeleteByArgs  string
-	sqlSelectAll     string
-	sqlSelectWhere   string
+	sqlCreateTable  string
+	sqlIsTableExist string
+	sqlInsertRow    string
+	sqlUpdateRow    string
+	sqlDeleteAll    string
+	sqlDeleteRow    string
+	sqlDeleteByArgs string
+	sqlSelectAll    string
+	sqlSelectWhere  string
 }
 
 // Filter  defines the filtering rules for a FilteredAdapter's policy.
@@ -128,7 +127,6 @@ func NewAdapterContext(ctx context.Context, db *sqlx.DB, tableName string) (*Ada
 // genSQL  generate sql based on db driver name.
 func (p *Adapter) genSQL() {
 	p.sqlCreateTable = fmt.Sprintf(sqlCreateTable, p.tableName)
-	p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTable, p.tableName)
 
 	p.sqlIsTableExist = fmt.Sprintf(sqlIsTableExist, p.tableName)
 
@@ -151,7 +149,6 @@ func (p *Adapter) genSQL() {
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableMysql, p.tableName)
 	case "sqlite", "sqlite3":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlite3, p.tableName)
-		p.sqlTruncateTable = fmt.Sprintf(sqlTruncateTableSqlite3, p.tableName)
 	case "sqlserver", "azuresql":
 		p.sqlCreateTable = fmt.Sprintf(sqlCreateTableSqlserver, p.tableName)
 		p.sqlInsertRow = fmt.Sprintf(sqlInsertRowSqlserver, p.tableName)
@@ -163,13 +160,6 @@ func (p *Adapter) genSQL() {
 // createTable  create a not exists table.
 func (p *Adapter) createTable() error {
 	_, err := p.db.ExecContext(p.ctx, p.sqlCreateTable)
-
-	return err
-}
-
-// truncateTable  clear the table.
-func (p *Adapter) truncateTable() error {
-	_, err := p.db.ExecContext(p.ctx, p.sqlTruncateTable)
 
 	return err
 }
@@ -197,27 +187,19 @@ func (p *Adapter) deleteRows(query string, args ...interface{}) error {
 	return err
 }
 
-// truncateAndInsertRows  clear table and insert new rows.
-func (p *Adapter) truncateAndInsertRows(rules [][]interface{}) error {
-	if err := p.truncateTable(); err != nil {
-		return err
-	}
-	return p.execTxSqlRows(p.sqlInsertRow, rules)
-}
-
 // deleteAllAndInsertRows  clear table and insert new rows.
 func (p *Adapter) deleteAllAndInsertRows(rules [][]interface{}) error {
 	if err := p.deleteAll(); err != nil {
 		return err
 	}
-	return p.execTxSqlRows(p.sqlInsertRow, rules)
+	return p.execTxSQLRows(p.sqlInsertRow, rules)
 }
 
-// execTxSqlRows  exec sql rows.
-func (p *Adapter) execTxSqlRows(query string, rules [][]interface{}) (err error) {
+// execTxSQLRows  exec sql rows.
+func (p *Adapter) execTxSQLRows(query string, rules [][]interface{}) error {
 	tx, err := p.db.BeginTx(p.ctx, nil)
 	if err != nil {
-		return
+		return err
 	}
 
 	var action string
@@ -245,15 +227,15 @@ func (p *Adapter) execTxSqlRows(query string, rules [][]interface{}) (err error)
 		goto ROLLBACK
 	}
 
-	return
+	return err
 
 ROLLBACK:
 
 	if err1 := tx.Rollback(); err1 != nil {
-		err = fmt.Errorf("%s err: %v, rollback err: %v", action, err, err1)
+		err = fmt.Errorf("%s err: %w, rollback err: %w", action, err, err1)
 	}
 
-	return
+	return err
 }
 
 // selectRows  select eligible data by args from the table.
@@ -271,7 +253,7 @@ func (p *Adapter) selectRows(query string, args ...interface{}) ([]*CasbinRule, 
 }
 
 // selectWhereIn  select eligible data by filter from the table.
-func (p *Adapter) selectWhereIn(filter *Filter) (lines []*CasbinRule, err error) {
+func (p *Adapter) selectWhereIn(filter *Filter) ([]*CasbinRule, error) {
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(64)
@@ -316,11 +298,13 @@ func (p *Adapter) selectWhereIn(filter *Filter) (lines []*CasbinRule, err error)
 		}
 	}
 
-	var query string
-
+	var (
+		query string
+		err   error
+	)
 	if hasInCond {
 		if query, args, err = sqlx.In(sqlBuf.String(), args...); err != nil {
-			return
+			return nil, err
 		}
 	} else {
 		query = sqlBuf.String()
@@ -337,7 +321,9 @@ func (p *Adapter) LoadPolicy(model model.Model) error {
 	}
 
 	for _, line := range lines {
-		p.loadPolicyLine(line, model)
+		if err = p.loadPolicyLine(line, model); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -382,7 +368,7 @@ func (p *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 		args = append(args, arg)
 	}
 
-	return p.execTxSqlRows(p.sqlInsertRow, args)
+	return p.execTxSQLRows(p.sqlInsertRow, args)
 }
 
 // RemovePolicy  remove policy rules from the storage.
@@ -448,7 +434,7 @@ func (p *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) (er
 		args = append(args, arg)
 	}
 
-	return p.execTxSqlRows(p.sqlDeleteRow, args)
+	return p.execTxSQLRows(p.sqlDeleteRow, args)
 }
 
 // LoadFilteredPolicy  load policy rules that match the filter.
@@ -469,7 +455,9 @@ func (p *Adapter) LoadFilteredPolicy(model model.Model, filterPtr interface{}) e
 	}
 
 	for _, line := range lines {
-		p.loadPolicyLine(line, model)
+		if err = p.loadPolicyLine(line, model); err != nil {
+			return err
+		}
 	}
 
 	p.isFiltered = true
@@ -507,11 +495,11 @@ func (p *Adapter) UpdatePolicies(sec, ptype string, oldRules, newRules [][]strin
 		args = append(args, append(newArg, oldArg...))
 	}
 
-	return p.execTxSqlRows(p.sqlUpdateRow, args)
+	return p.execTxSQLRows(p.sqlUpdateRow, args)
 }
 
 // UpdateFilteredPolicies deletes old rules and adds new rules.
-func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]string, fieldIndex int, fieldValues ...string) (oldPolicies [][]string, err error) {
+func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]string, fieldIndex int, fieldValues ...string) ([][]string, error) {
 	var value string
 
 	var whereBuf bytes.Buffer
@@ -542,11 +530,15 @@ func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]stri
 	selectBuf.WriteString("p_type=?")
 	selectBuf.Write(whereBuf.Bytes())
 
-	var oldRows []*CasbinRule
+	var (
+		oldRows []*CasbinRule
+		err     error
+	)
+
 	value = p.db.Rebind(selectBuf.String())
 	oldRows, err = p.selectRows(value, whereArgs...)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	var deleteBuf bytes.Buffer
@@ -557,12 +549,13 @@ func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]stri
 	var tx *sqlx.Tx
 	tx, err = p.db.BeginTxx(p.ctx, nil)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	var (
-		stmt   *sqlx.Stmt
-		action string
+		stmt        *sqlx.Stmt
+		oldPolicies [][]string
+		action      string
 	)
 	value = p.db.Rebind(deleteBuf.String())
 	if _, err = tx.ExecContext(p.ctx, value, whereArgs...); err != nil {
@@ -607,21 +600,21 @@ func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]stri
 		oldPolicies = append(oldPolicies, oldPolicy)
 	}
 
-	return
+	return oldPolicies, err
 
 ROLLBACK:
 
 	if err1 := tx.Rollback(); err1 != nil {
-		err = fmt.Errorf("%s err: %v, rollback err: %v", action, err, err1)
+		err = fmt.Errorf("%s err: %w, rollback err: %w", action, err, err1)
 	}
 
-	return
+	return nil, err
 }
 
 // loadPolicyLine  load a policy line to model.
-func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
+func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) error {
 	if line == nil {
-		return
+		return nil
 	}
 
 	var lineBuf bytes.Buffer
@@ -637,7 +630,7 @@ func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) {
 		}
 	}
 
-	persist.LoadPolicyLine(lineBuf.String(), model)
+	return persist.LoadPolicyLine(lineBuf.String(), model)
 }
 
 // genArgs  generate args from ptype and rule.
