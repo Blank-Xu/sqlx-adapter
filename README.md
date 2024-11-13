@@ -10,9 +10,11 @@
 
 ---
 
-This `sqlx-adapter` is a [sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin V2](https://github.com/casbin/casbin).
+The `sqlx-adapter` is a [sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin V2](https://github.com/casbin/casbin).
 
 With this library, Casbin can load policy lines from sqlx supported databases or save policy lines.
+
+***It is suggest to use [sql-adapter](https://github.com/Blank-Xu/sql-adapter). There is a simple [example](https://github.com/Blank-Xu/sql-adapter/tree/master/examples/sqlx) to show how to use [sql-adapter](https://github.com/Blank-Xu/sql-adapter) with [sqlx](https://github.com/jmoiron/sqlx).***
 
 ## Tested Databases
 
@@ -112,7 +114,10 @@ import (
     "github.com/jmoiron/sqlx"
 )
 
-func finalizer(db *sqlx.DB) {
+func finalize(db *sqlx.DB) {
+    if db == nil {
+        return
+    }
     err := db.Close()
     if err != nil {
         panic(err)
@@ -121,7 +126,7 @@ func finalizer(db *sqlx.DB) {
 
 func main() {
     // connect to the database first.
-    db, err := sqlx.Connect("mysql", "root:YourPassword@tcp(127.0.0.1:3306)/YourDBName")
+    db, err := sqlx.Connect("mysql", "YourUserName:YourPassword@tcp(127.0.0.1:3306)/YourDBName")
     if err != nil {
         panic(err)
     }
@@ -131,7 +136,7 @@ func main() {
     db.SetConnMaxLifetime(time.Minute * 10)
 
     // need to control by user, not the package
-    runtime.SetFinalizer(db, finalizer)
+    runtime.SetFinalizer(db, finalize)
 
     // Initialize a Sqlx adapter and use it in a Casbin enforcer:
     // The adapter will use the Sqlite3 table name "casbin_rule_test",
