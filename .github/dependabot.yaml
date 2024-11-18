@@ -1,7 +1,9 @@
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - "/"
+      - "/test"
     schedule:
       interval: weekly
   - package-ecosystem: github-actions
