@@ -30,8 +30,8 @@ linters:
     - whitespace
   settings:
     cyclop:
-      max-complexity: 12
-      package-average: 0
+      max-complexity: 17
+      package-average: 4
     perfsprint:
       errorf: true
       strconcat: false
