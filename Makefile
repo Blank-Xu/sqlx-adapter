@@ -5,7 +5,7 @@ export $(shell sed 's/=.*//' test/.env)
 
 define run_test
 	@echo "test start with DB[${1}]"
-	@cd test && CGO_ENABLED=1 TEST_DB=${1} go test -v -race -covermode=atomic -coverprofile=coverage.out ./e2e/... -coverpkg=../...
+	@cd test && go mod tidy && CGO_ENABLED=1 TEST_DB=${1} go test -v -race -covermode=atomic -coverprofile=coverage.out ./e2e/... -coverpkg=../...
 	@mv test/coverage.out coverage.out
 endef
 
@@ -32,11 +32,12 @@ define start_sqlserver
 	@docker run --name sqlserver_${TEST_DATABASE_NAME} \
 		-e "ACCEPT_EULA=Y" \
 		-e "MSSQL_DB=${TEST_DATABASE_NAME}" \
-		-e "SA_PASSWORD=${TEST_DATABASE_PASSWORD}" \
+		-e "MSSQL_SA_PASSWORD=${TEST_DATABASE_PASSWORD}" \
 		-e "MSSQL_USER=${TEST_DATABASE_USER}" \
 		-e "MSSQL_PASSWORD=${TEST_DATABASE_PASSWORD}" \
 		-p 1433:${TEST_DATABASE_PORT_SQLSERVER} \
-		-d --rm mcr.microsoft.com/mssql/server:2022-CU15-GDR1-ubuntu-22.04
+		-v ./temp/sqlserver:/var/opt/mssql \
+		-d --rm mcr.microsoft.com/mssql/server:2022-CU18-ubuntu-22.04
 	@sleep 5
 	@docker exec -i sqlserver_${TEST_DATABASE_NAME} /bin/bash < test/init.sqlserver.sh
 endef
