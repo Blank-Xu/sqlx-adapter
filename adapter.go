@@ -499,6 +499,8 @@ func (p *Adapter) UpdatePolicies(sec, ptype string, oldRules, newRules [][]strin
 }
 
 // UpdateFilteredPolicies deletes old rules and adds new rules.
+//
+//nolint:funlen
 func (p *Adapter) UpdateFilteredPolicies(sec, ptype string, newPolicies [][]string, fieldIndex int, fieldValues ...string) ([][]string, error) {
 	var value string
 
