@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/util"
+	"github.com/casbin/casbin/v3"
+	"github.com/casbin/casbin/v3/util"
 	"github.com/jmoiron/sqlx"
 
 	. "github.com/Blank-Xu/sqlx-adapter"

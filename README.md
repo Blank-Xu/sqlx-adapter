@@ -10,7 +10,7 @@
 
 ---
 
-The `sqlx-adapter` is a [sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin V2](https://github.com/casbin/casbin).
+The `sqlx-adapter` is a [sqlx](https://github.com/jmoiron/sqlx) adapter for [Casbin v3](https://github.com/casbin/casbin).
 
 With this library, Casbin can load policy lines from sqlx supported databases or save policy lines.
 
@@ -47,7 +47,7 @@ import (
     "log"
 
     sqlxadapter "github.com/Blank-Xu/sqlx-adapter"
-    "github.com/casbin/casbin/v2"
+    "github.com/casbin/casbin/v3"
     "github.com/jmoiron/sqlx"
     _ "github.com/mattn/go-sqlite3"
 )
@@ -109,7 +109,7 @@ import (
     "time"
 
     sqlxadapter "github.com/Blank-Xu/sqlx-adapter"
-    "github.com/casbin/casbin/v2"
+    "github.com/casbin/casbin/v3"
     _ "github.com/go-sql-driver/mysql"
     "github.com/jmoiron/sqlx"
 )
