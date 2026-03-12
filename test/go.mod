@@ -1,6 +1,6 @@
 module github.com/Blank-Xu/sqlx-adapter-test
 
-go 1.25.8
+go 1.25.7
 
 replace github.com/Blank-Xu/sqlx-adapter => ../.
 
