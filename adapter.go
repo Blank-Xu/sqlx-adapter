@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/casbin/casbin/v3/model"
 	"github.com/casbin/casbin/v3/persist"
@@ -637,17 +638,15 @@ func (Adapter) loadPolicyLine(line *CasbinRule, model model.Model) error {
 
 // genArgs  generate args from ptype and rule.
 func (Adapter) genArgs(ptype string, rule []string) []interface{} {
-	l := len(rule)
+	args := make([]interface{}, 0, maxParamLength)
+	args = append(args, ptype)
 
-	args := make([]interface{}, maxParamLength)
-	args[0] = ptype
-
-	for idx := 0; idx < l; idx++ {
-		args[idx+1] = rule[idx]
+	for idx := range rule {
+		args = append(args, strings.TrimSpace(rule[idx]))
 	}
 
-	for idx := l + 1; idx < maxParamLength; idx++ {
-		args[idx] = ""
+	for idx := len(rule) + 1; idx < maxParamLength; idx++ {
+		args = append(args, "")
 	}
 
 	return args
