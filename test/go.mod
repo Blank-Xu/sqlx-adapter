@@ -7,7 +7,7 @@ replace github.com/Blank-Xu/sqlx-adapter => ../.
 require (
 	github.com/Blank-Xu/sqlx-adapter v0.0.0
 	github.com/casbin/casbin/v3 v3.10.0
-	github.com/go-sql-driver/mysql v1.9.3
+	github.com/go-sql-driver/mysql v1.10.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.11.2
 	github.com/mattn/go-sqlite3 v1.14.34
